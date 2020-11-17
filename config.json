@@ -1,0 +1,54 @@
+{
+    "name": "MMCBNU_LeNet",
+    "n_gpu": "1",
+
+    "arch": {
+        "type": "efficientnet",
+        "args": {
+            "num_classes":481
+        }
+    },
+    "data_loader": {
+        "type": "Verificaiotn_DataLoader",
+        "args":{
+            "data_dir": "train_MMCBNU.csv",
+            "test_dir": "test_MMCBNU.csv",
+            "batch_size": 16,
+            "shuffle": true,
+            "validation_split": -1,
+            "num_workers": 2,
+            "verification": true
+        }
+    },
+    "optimizer": {
+        "type": "Adam",
+        "args":{
+            "lr": 0.001,
+            "weight_decay": 0,
+            "amsgrad": true
+        }
+    },
+    "loss": "CE",
+    "metrics": [
+        "accuracy", "top_k_acc"
+    ],
+    "lr_scheduler": {
+        "type": "StepLR",
+        "args": {
+            "step_size": 50,
+            "gamma": 0.1
+        }
+    },
+    "trainer": {
+        "epochs": 100,
+
+        "save_dir": "saved/",
+        "save_period": 5,
+        "verbosity": 2,
+        
+        "monitor": "min val_loss",
+        "early_stop": 100,
+
+        "tensorboard": true
+    }
+}

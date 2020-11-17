@@ -17,20 +17,20 @@
 # 文件夹目录
 
 .
-├── base ：储存data_loader，网络，训练器的基类
-├── **config.json**：配置文件
-├── data：数据csv文件夹
-├── data_loader：data_loader具体实现
-├── logger：日志器代码实现
-├── loss：损失
-├── **model**：网络模型
-├── parse_config.py：参数压缩加载
-├── requirements.txt：依赖
-├── saved：保存的模型、代码、日志都会在这
-├── test.py：测试代码接口
-├── **trainer**：训练器代码实现
-├── **train.py**：训练代码接口
-└── utils：小组件代码
+├── base ：储存data_loader，网络，训练器的基类  
+├── **config.json**：配置文件  
+├── data：数据csv文件夹  
+├── data_loader：data_loader具体实现  
+├── logger：日志器代码实现  
+├── loss：损失  
+├── **model**：网络模型  
+├── parse_config.py：参数压缩加载  
+├── requirements.txt：依赖  
+├── saved：保存的模型、代码、日志都会在这  
+├── test.py：测试代码接口  
+├── **trainer**：训练器代码实现  
+├── **train.py**：训练代码接口  
+└── utils：小组件代码  
 
 # 如何更改训练网络
 

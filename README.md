@@ -16,7 +16,7 @@
 
 # 文件夹目录
 
-.
+.  
 ├── base ：储存data_loader，网络，训练器的基类  
 ├── **config.json**：配置文件  
 ├── data：数据csv文件夹  

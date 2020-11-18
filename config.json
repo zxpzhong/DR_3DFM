@@ -1,19 +1,19 @@
 {
-    "name": "MMCBNU_LeNet",
-    "n_gpu": "1",
+    "name": "test",
+    "n_gpu": "3",
 
     "arch": {
-        "type": "efficientnet",
+        "type": "DR_3D_Model",
         "args": {
-            "num_classes":481
+            "num_classes":1
         }
     },
     "data_loader": {
-        "type": "Verificaiotn_DataLoader",
+        "type": "LFMB_3DFB_Pictures_Seged_Rectified",
         "args":{
-            "data_dir": "train_MMCBNU.csv",
-            "test_dir": "test_MMCBNU.csv",
-            "batch_size": 16,
+            "data_dir": "/home/zf/vscode/3d/3DFinger/outer_files",
+            "test_dir": "",
+            "batch_size": 1,
             "shuffle": true,
             "validation_split": -1,
             "num_workers": 2,

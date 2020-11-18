@@ -17,6 +17,7 @@ from model.shufflenet import ShuffleNet
 from model.shufflenet2 import ShuffleNet2
 from model.efficientnet import efficientnet
 from model.ghostnet import GhostNet
+from model.DR_3D_Rec import DR_3D_Model
 '''
 MnistModel--------------------------------
 '''

@@ -2,3 +2,4 @@ __init__.py
 data/
 .vscode/
 saved/
+__pycache__/

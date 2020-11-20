@@ -28,7 +28,7 @@
             "amsgrad": true
         }
     },
-    "loss": "CE",
+    "loss": "MSE",
     "metrics": [
         "accuracy", "top_k_acc"
     ],

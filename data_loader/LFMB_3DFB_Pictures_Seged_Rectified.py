@@ -62,29 +62,30 @@ class Train_Dataset(torch.utils.data.Dataset):
         return 1
 
     def __getitem__(self, index):
-        img1 = Image.open("/home/zf/vscode/3d/3DFinger/outer_files/images/001_1_2_01_A.bmp")
+        path = '/home/zf/vscode/3d/3DFinger/outer_files/images/001_1_2_01'
+        img1 = Image.open(path+"_A.bmp")
         img1 = transform(img1)
         img1 = torch.cat([img1, img1, img1], 0)
-        img2 = Image.open("/home/zf/vscode/3d/3DFinger/outer_files/images/001_1_2_01_B.bmp")
+        img2 = Image.open(path+"_B.bmp")
         img2 = transform(img2)
         img2 = torch.cat([img2, img2, img2], 0)
-        img3 = Image.open("/home/zf/vscode/3d/3DFinger/outer_files/images/001_1_2_01_C.bmp")
+        img3 = Image.open(path+"_C.bmp")
         img3 = transform(img3)
         img3 = torch.cat([img3, img3, img3], 0)
-        img4 = Image.open("/home/zf/vscode/3d/3DFinger/outer_files/images/001_1_2_01_D.bmp")
+        img4 = Image.open(path+"_D.bmp")
         img4 = transform(img4)
         img4 = torch.cat([img4, img4, img4], 0)
-        img5 = Image.open("/home/zf/vscode/3d/3DFinger/outer_files/images/001_1_2_01_E.bmp")
+        img5 = Image.open(path+"_E.bmp")
         img5 = transform(img5)
         img5 = torch.cat([img5, img5, img5], 0)
-        img6 = Image.open("/home/zf/vscode/3d/3DFinger/outer_files/images/001_1_2_01_F.bmp")
+        img6 = Image.open(path+"_F.bmp")
         img6 = transform(img6)
         img6 = torch.cat([img6, img6, img6], 0)
 
         # pil_img = torch.cat([pil_img, pil_img, pil_img], 0)
         label = int(0)
         img = [img1,img2,img3,img4,img5,img6]
-        return img,label
+        return img,label,path
 
 
 class Test_Dataset(torch.utils.data.Dataset):
@@ -95,20 +96,21 @@ class Test_Dataset(torch.utils.data.Dataset):
         return 1
 
     def __getitem__(self, index):
-        img1 = Image.open("/home/zf/vscode/3d/3DFinger/outer_files/images/001_1_2_01_A.bmp")
+        path = '/home/zf/vscode/3d/3DFinger/outer_files/images/001_1_2_01'
+        img1 = Image.open(path+"_A.bmp")
         img1 = transform(img1)
-        img2 = Image.open("/home/zf/vscode/3d/3DFinger/outer_files/images/001_1_2_01_B.bmp")
+        img2 = Image.open(path+"_B.bmp")
         img2 = transform(img2)
-        img3 = Image.open("/home/zf/vscode/3d/3DFinger/outer_files/images/001_1_2_01_C.bmp")
+        img3 = Image.open(path+"_C.bmp")
         img3 = transform(img3)
-        img4 = Image.open("/home/zf/vscode/3d/3DFinger/outer_files/images/001_1_2_01_D.bmp")
+        img4 = Image.open(path+"_D.bmp")
         img4 = transform(img4)
-        img5 = Image.open("/home/zf/vscode/3d/3DFinger/outer_files/images/001_1_2_01_E.bmp")
+        img5 = Image.open(path+"_E.bmp")
         img5 = transform(img5)
-        img6 = Image.open("/home/zf/vscode/3d/3DFinger/outer_files/images/001_1_2_01_F.bmp")
+        img6 = Image.open(path+"_F.bmp")
         img6 = transform(img6)
 
         # pil_img = torch.cat([pil_img, pil_img, pil_img], 0)
         label = int(0)
         img = [img1,img2,img3,img4,img5,img6]
-        return img,label
+        return img,label,path

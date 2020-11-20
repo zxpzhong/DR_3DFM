@@ -3,3 +3,4 @@ data/
 .vscode/
 saved/
 __pycache__/
+outer_files/

@@ -38,12 +38,12 @@ class Trainer(BaseTrainer):
         """
         self.model.train()
         self.train_metrics.reset()
-        for batch_idx, (data, target) in enumerate(self.data_loader):
+        for batch_idx, (data, target ,path) in enumerate(self.data_loader):
             data, target = [item.to(self.device) for item in data], target.to(self.device)
 
             self.optimizer.zero_grad()
-            output = self.model(data)
-            loss = self.criterion(output, target)
+            output = self.model(data,path)
+            loss = self.criterion(output, data)
             loss.backward()
             self.optimizer.step()
 

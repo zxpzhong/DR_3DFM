@@ -156,7 +156,7 @@ class Renderer(nn.Module):
             temp = predictions.detach().cpu().numpy()[0]
             images.append(temp)
         return images
-    
+        
     def forward(self,rec_mesh,path,faces):
         '''
         输入: 重构的mesh ： 顶点数 * 3
@@ -180,7 +180,7 @@ class Renderer(nn.Module):
 class DR_3D_Model(nn.Module):
     r"""Differential Render based 3D Finger Reconstruction Model
         """
-    def __init__(self,N = 6,f_dim=512, point_num = 1024 , num_classes=1):
+    def __init__(self,N = 6,f_dim=512, point_num = 1024 , num_classes=1,ref_path = 'data/cylinder_template_mesh/cylinder1022.obj'):
         super(DR_3D_Model, self).__init__()
         '''
         初始化参数:
@@ -200,11 +200,13 @@ class DR_3D_Model(nn.Module):
         
         
         # 参考mesh
-        # TODO: 添加参考mesh信息
-        self.faces = None
-        self.ref_mesh = torch.zeros([self.point_num,3])
+        # 添加参考mesh信息
+        mesh = TriangleMesh.from_obj(ref_path)
+        self.faces = mesh.faces.int()
+        self.ref_mesh = mesh.vertices
         if torch.cuda.is_available():
             self.ref_mesh = self.ref_mesh.cuda()
+            self.faces = self.faces.cuda()
         
     def forward(self, images ,path):
         '''

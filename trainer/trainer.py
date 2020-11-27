@@ -46,7 +46,7 @@ class Trainer(BaseTrainer):
             loss = self.criterion(output, data)
             loss.backward()
             self.optimizer.step()
-
+            # TODO: 训练测试tensorboard可视化
             self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
             self.train_metrics.update('loss', loss.item())
             for met in self.metric_ftns:

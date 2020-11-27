@@ -9,7 +9,48 @@ from kaolin.graphics.dib_renderer.utils.sphericalcoord import get_spherical_coor
 from kaolin.rep import TriangleMesh
 import torchvision
 # uv贴图接口
-from utils.Finger.uv_map import uv_map
+from utils.uvmap import uv_map
+import numpy as np
+
+import math
+def isRotationMatrix(R) :
+    Rt = np.transpose(R)
+    shouldBeIdentity = np.dot(Rt, R)
+    I = np.identity(3, dtype = R.dtype)
+    n = np.linalg.norm(I - shouldBeIdentity)
+    return n < 1e-6
+def rotationMatrixToEulerAngles(R) :
+    assert(isRotationMatrix(R))
+    sy = math.sqrt(R[0,0] * R[0,0] +  R[1,0] * R[1,0])
+    singular = sy < 1e-6
+    if  not singular :
+        x = math.atan2(R[2,1] , R[2,2])
+        y = math.atan2(-R[2,0], sy)
+        z = math.atan2(R[1,0], R[0,0])
+    else :
+        x = math.atan2(-R[1,2], R[1,1])
+        y = math.atan2(-R[2,0], sy)
+        z = 0
+    return np.array([x, y, z])
+
+def eulerAnglesToRotationMatrix(theta) :
+    R_x = np.array([[1,         0,                  0                   ],
+                    [0,         math.cos(theta[0]), -math.sin(theta[0]) ],
+                    [0,         math.sin(theta[0]), math.cos(theta[0])  ]
+                    ])
+                    
+    R_y = np.array([[math.cos(theta[1]),    0,      math.sin(theta[1])  ],
+                    [0,                     1,      0                   ],
+                    [-math.sin(theta[1]),   0,      math.cos(theta[1])  ]
+                    ])
+                
+    R_z = np.array([[math.cos(theta[2]),    -math.sin(theta[2]),    0],
+                    [math.sin(theta[2]),    math.cos(theta[2]),     0],
+                    [0,                     0,                      1]
+                    ])
+    R = np.dot(R_z, np.dot( R_y, R_x ))
+    return R
+
 
 class Img_Embedding_Model(nn.Module):
     '''
@@ -66,7 +107,7 @@ class Renderer(nn.Module):
     '''
     上纹理+渲染
     '''
-    def __init__(self,N = 6,f_dim=256, point_num = 1024):
+    def __init__(self,faces,N = 6,f_dim=256, point_num = 1024):
         super(Renderer, self).__init__()
         '''
         初始化参数:
@@ -74,19 +115,50 @@ class Renderer(nn.Module):
         self.N = N
         self.f_dim = f_dim
         self.point_num = point_num
+        self.faces = faces
         
         # DIB渲染器
-        self.renderer = DIBRenderer(height=800, width=1280, mode='Lambertian', camera_center=None,camera_up=None, camera_fov_y=None)
+        self.renderer = DIBRenderer(height=400, width=640, mode='Lambertian',camera_fov_y=66.96 * np.pi / 180.0)
+        self.renderer.set_look_at_parameters([0],[0],[0])
         # 设置相机参数
         # self.renderer.set_camera_parameters()
         
-        # TODO: 预定义方位角海拔和距离
-        self.azimuth = [0]*self.N
-        self.CAMERA_ELEVATION = [0]*self.N
-        self.CAMERA_DISTANCE = [0]*self.N
+        # 预定义相机外参
+        # 真实参数
+        self.cam_mat = np.array([
+            [[ 0.57432211  ,0.77105488  ,0.27500633],
+ [-0.56542476,  0.13069975 , 0.81437854],
+ [ 0.59198729 ,-0.62321099,  0.51103728]],
+[[ 0.45602357 , 0.72700674,  0.51332611],
+ [ 0.14605884 ,-0.63010819  ,0.76264702],
+ [ 0.87790052 ,-0.2728092 , -0.39352995]],
+[[ 0.60918383,  0.52822546 , 0.59150057],
+ [ 0.73834933 ,-0.64995523, -0.17999572],
+ [ 0.28937056 , 0.54638454 ,-0.78595714]],
+[[ 7.71746128e-01 , 4.78767298e-01,  4.18556793e-01],
+ [ 4.76878378e-01 ,-2.72559500e-04 ,-8.78969248e-01],
+ [-4.20707651e-01,  8.77941797e-01, -2.28524119e-01]],
+[[ 0.78888283,  0.55521065 , 0.2634483 ],
+ [-0.15905217 , 0.5985437 , -0.78514193],
+ [-0.59360448 , 0.57748297 , 0.56048831]],
+[[ 0.71232121 , 0.68900052 , 0.13370407],
+ [-0.69422699 , 0.71968522, -0.01010355],
+ [-0.10318619 ,-0.085624  ,  0.99096979]]
+        ])
+        self.cam_mat = torch.FloatTensor(self.cam_mat)
+        self.cameras_coordinate = [[2.50436065, -3.75589484, 1.88800446],
+                            [4.02581981, -2.56894275, -3.29281609],
+                            [1.01348544, 1.88043939, -5.4273143],
+                            [-2.45261002, 3.5962286, -1.87506165],
+                            [-3.12155638, 2.09254542, 2.21770186],
+                            [-1.07692383, -1.37631717, 4.3081322]]
+        self.cameras_coordinate = torch.FloatTensor(self.cameras_coordinate)
+        if torch.cuda.is_available():
+            self.cam_mat = torch.FloatTensor(self.cam_mat).cuda()
+            self.cameras_coordinate = torch.FloatTensor(self.cameras_coordinate).cuda()
         pass
             
-    def texture_map(self,rec_mesh,path,faces):
+    def texture_map(self,rec_mesh,imgs,faces):
         '''
         纹理映射
         输入: 
@@ -109,14 +181,14 @@ class Renderer(nn.Module):
                 points.append(temp)
             objs.append(points)
         # 构造返回tensor, uvmap texture默认尺寸1280*1600
-        uv_map = torch.zeros([batchsize,3,1280*1600])
+        texture = torch.zeros([batchsize,3,1280*1600])
         uv_val = torch.zeros([batchsize,self.point_num,2])
         
         for i in range(batchsize):
             # 返回uv贴图, uv值, 三角面片uv序号
-            uv_map_png,uv_val_in_obj,vt_list = uv_map(objs[i],path[i])
+            uv_map_png,uv_val_in_obj,vt_list = uv_map(data_points = objs[i],faces_point = self.faces,imgs = imgs)
             # 将其处理为tensor
-            uv_map[i] = torch.from_numpy(uv_map_png)
+            texture[i] = torch.from_numpy(uv_map_png)
             # 将uv索引处理为每点对应一个uv值
             w,h = faces.shape
             uv_list = {}
@@ -131,7 +203,7 @@ class Renderer(nn.Module):
                         uv_list[faces[i,j].item()] = vt_list[i,j]
             for j in range(self.point_num):
                 uv_val[i][j] = torch.from_numpy(uv_val_in_obj[uv_list[i]])
-        return uv_map,uv_val
+        return texture,uv_val
     
     def render(self,vertices,faces,uv,texture):
         '''
@@ -146,10 +218,10 @@ class Renderer(nn.Module):
         images = []
         for i in range(self.N):
             # N个视角下渲染,每次渲染一个视角下的batchsize张图片
-            # 设置相机参数 , 方位角, 海拔和距离
-            self.renderer.set_look_at_parameters([90 - self.azimuth[i]],
-                                [self.CAMERA_ELEVATION[i]],
-                                [self.CAMERA_DISTANCE[i]])
+            # 设置相机参数
+            camera_view_mtx = self.cam_mat[i].unsqueeze(0)
+            camera_view_shift = self.cameras_coordinate[i].unsqueeze(0)
+            self.renderer.camera_params = [camera_view_mtx, camera_view_shift, self.renderer.camera_params[2]]
             predictions, _, _ = self.renderer(points=[vertices, faces.long()],
                                             uv_bxpx2=uv,
                                             texture_bx3xthxtw=texture)
@@ -157,13 +229,13 @@ class Renderer(nn.Module):
             images.append(temp)
         return images
         
-    def forward(self,rec_mesh,path,faces):
+    def forward(self,rec_mesh,imgs,faces):
         '''
         输入: 重构的mesh ： 顶点数 * 3
         输出: N个视角下渲染出来的图片 NxCxHxW
         '''
         # 纹理映射 图片+模型 -> 模型+face+uv坐标+纹理图
-        uv_map,uv_val = self.texture_map(rec_mesh,path,faces)
+        uv_map,uv_val = self.texture_map(rec_mesh,imgs,faces)
         # 构造vertices,faces,uv,texture
         
         # 顶点构造 : 重构的mesh
@@ -180,7 +252,7 @@ class Renderer(nn.Module):
 class DR_3D_Model(nn.Module):
     r"""Differential Render based 3D Finger Reconstruction Model
         """
-    def __init__(self,N = 6,f_dim=512, point_num = 1024 , num_classes=1,ref_path = 'data/cylinder_template_mesh/cylinder1022.obj'):
+    def __init__(self,N = 6,f_dim=512, point_num = 1022 , num_classes=1,ref_path = 'data/cylinder_template_mesh/cylinder1022.obj'):
         super(DR_3D_Model, self).__init__()
         '''
         初始化参数:
@@ -188,16 +260,6 @@ class DR_3D_Model(nn.Module):
         self.N = N
         self.f_dim = f_dim
         self.point_num = point_num
-        
-        # 图片特征提取网络
-        self.img_embedding_model = Img_Embedding_Model()
-        
-        # 三维形变网络
-        self.mesh_deform_model = Mesh_Deform_Model(N=self.N,f_dim=self.f_dim,point_num = self.point_num)
-        
-        # 可微渲染器
-        self.renderer = Renderer()
-        
         
         # 参考mesh
         # 添加参考mesh信息
@@ -207,6 +269,17 @@ class DR_3D_Model(nn.Module):
         if torch.cuda.is_available():
             self.ref_mesh = self.ref_mesh.cuda()
             self.faces = self.faces.cuda()
+        
+        # 图片特征提取网络
+        self.img_embedding_model = Img_Embedding_Model()
+        
+        # 三维形变网络
+        self.mesh_deform_model = Mesh_Deform_Model(N=self.N,f_dim=self.f_dim,point_num = self.point_num)
+        
+        # 可微渲染器
+        self.renderer = Renderer(N=self.N,f_dim=self.f_dim,point_num = self.point_num,faces = self.faces)
+        
+
         
     def forward(self, images ,path):
         '''
@@ -218,5 +291,5 @@ class DR_3D_Model(nn.Module):
             embeddings.append(self.img_embedding_model(images[i]))
         rec_mesh = self.mesh_deform_model(embeddings)
         rec_mesh = rec_mesh + self.ref_mesh.repeat(rec_mesh.shape[0],1,1)
-        repro_imgs = self.renderer(rec_mesh,path,self.faces)
+        repro_imgs = self.renderer(rec_mesh,images,self.faces)
         return repro_imgs

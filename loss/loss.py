@@ -11,3 +11,5 @@ def CE(output, target):
 
 def MSE(recon, data):
     return F.mse_loss(recon,data)
+
+# TODO: 其他损失增加, DIB原生的几个loss

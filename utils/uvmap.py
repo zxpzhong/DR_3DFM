@@ -12,7 +12,6 @@ from utils.Finger.process import points_texture_mapping as tm
     uv_val : uv值 , 二维numpy数组 ,第一维uv值数目, 第二维uv值
     vt_list : uv索引 , 二维numpy数组, 第一维三角面片数目, 第二维uv值的序号索引
 '''
-# TODO: 封装接口
 def uv_map(data_points,faces_point,imgs):
     '''
     输入:
@@ -23,6 +22,7 @@ def uv_map(data_points,faces_point,imgs):
         uv 值 uv_val_in_obj : uv数目 * 2
         uv索引 : 三角面片数目 * 3
     '''
+    imgs = [np.array(item[0][0].cpu())*255 for item in imgs]
     obj_suffix = '.obj'
     # 拿到mesh所有顶点数据
     # data_points, face_start_index = pfd.read_mesh_points(file_path + obj_suffix)
@@ -41,7 +41,7 @@ def uv_map(data_points,faces_point,imgs):
     # faces_point = pfd.read_mesh_faces(file_path + obj_suffix,face_start_index)  # 读取obj中face的顶点数据
     uv_map_png,uv_val_in_obj,vt_list = ftm.mapping_faces_gray(data_points,camera_index_to_points, faces_point, imgs)  # 拿到所有面的纹理区域
     # ftm.write_gray_to_obj(faces_texture, file_path)
-    return uv_map_png,uv_val_in_obj,vt_list
+    return uv_map_png/255,uv_val_in_obj,vt_list
 
 # '通过面进行纹理映射'
 if __name__ == '__main__':

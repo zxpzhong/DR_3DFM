@@ -25,12 +25,6 @@ class LFMB_3DFB_Pictures_Seged_Rectified(BaseDataLoader):
             self.test_dataset = None
         super().__init__(self.dataset,self.test_dataset, batch_size, shuffle, validation_split, num_workers,verification)
 
-# 路径替换
-final_data_root = '/home/data/finger_vein'
-def path_change(str):
-    new_str = str.replace('/home/data_ssd/ywl_DataSets/seg_zf/data',final_data_root)
-    return new_str
-
 transform = T.Compose([
     # T.Resize([256, 256]),
     # T.RandomCrop(224),
@@ -47,69 +41,85 @@ transform = T.Compose([
 PIL读取出来的图像默认就已经是0-1范围了！！！！！！！！，不用再归一化
 '''
 transform_notrans = T.Compose([
-    T.Grayscale(),
+    # T.Grayscale(),
     # T.Resize([224,224]), # 缩放图片(Image)
     T.ToTensor(), # 将图片(Image)转成Tensor，归一化至[0, 1]
     # T.Normalize(mean=[.5, .5, .5], std=[.5, .5, .5]) # 标准化至[-1, 1]，规定均值和标准差
-    T.Normalize([0.5], [0.5]),  # 标准化至[-1, 1]，规定均值和标准差
+    # T.Normalize([0.5], [0.5]),  # 标准化至[-1, 1]，规定均值和标准差
 ])
 
 class Train_Dataset(torch.utils.data.Dataset):
-    def __init__(self,csv_file):
-        # TODO: 数据集准备和加载代码
+    def __init__(self,root = '/home/data/finger_vein/LFMB-3DFB_Pictures_Seged_Rectified_640_400/'):
+        self.root = root
+        train_file = 'data/train_file_forever.csv'
+        handle = open(train_file)
+        lines = handle.readlines()
+        self.prefixs = list(set([item.split(',')[2] for item in lines[1:]]))
         pass
 
     def __len__(self):
+        # return len(self.prefixs)
         return 1
 
     def __getitem__(self, index):
-        path = '/home/data/finger_vein/LFMB-3DFB_Pictures_Seged_Rectified/0001_2_01'
+        path = self.root+self.prefixs[index]
         img1 = Image.open(path+"_A.bmp")
         img1 = transform_notrans(img1)
-        img1 = torch.cat([img1, img1, img1], 0)
+        # img1 = torch.cat([img1, img1, img1], 0)
         img2 = Image.open(path+"_B.bmp")
         img2 = transform_notrans(img2)
-        img2 = torch.cat([img2, img2, img2], 0)
+        # img2 = torch.cat([img2, img2, img2], 0)
         img3 = Image.open(path+"_C.bmp")
         img3 = transform_notrans(img3)
-        img3 = torch.cat([img3, img3, img3], 0)
+        # img3 = torch.cat([img3, img3, img3], 0)
         img4 = Image.open(path+"_D.bmp")
         img4 = transform_notrans(img4)
-        img4 = torch.cat([img4, img4, img4], 0)
+        # img4 = torch.cat([img4, img4, img4], 0)
         img5 = Image.open(path+"_E.bmp")
         img5 = transform_notrans(img5)
-        img5 = torch.cat([img5, img5, img5], 0)
+        # img5 = torch.cat([img5, img5, img5], 0)
         img6 = Image.open(path+"_F.bmp")
         img6 = transform_notrans(img6)
-        img6 = torch.cat([img6, img6, img6], 0)
+        # img6 = torch.cat([img6, img6, img6], 0)
 
         # pil_img = torch.cat([pil_img, pil_img, pil_img], 0)
         label = int(0)
         img = [img1,img2,img3,img4,img5,img6]
         return img,label,path
 
-
 class Test_Dataset(torch.utils.data.Dataset):
-    def __init__(self,csv_file):
+    def __init__(self,root = '/home/data/finger_vein/LFMB-3DFB_Pictures_Seged_Rectified_640_400/'):
+        self.root = root
+        train_file = 'data/test_file_forever.csv'
+        handle = open(train_file)
+        lines = handle.readlines()
+        self.prefixs = list(set([item.split(',')[2] for item in lines[1:]]))
         pass
 
     def __len__(self):
+        # return len(self.prefixs)
         return 1
 
     def __getitem__(self, index):
-        path = '/home/data/finger_vein/LFMB-3DFB_Pictures_Seged_Rectified/0001_2_01'
+        path = self.root + self.prefixs[index]
         img1 = Image.open(path+"_A.bmp")
         img1 = transform_notrans(img1)
+        # img1 = torch.cat([img1, img1, img1], 0)
         img2 = Image.open(path+"_B.bmp")
         img2 = transform_notrans(img2)
+        # img2 = torch.cat([img2, img2, img2], 0)
         img3 = Image.open(path+"_C.bmp")
         img3 = transform_notrans(img3)
+        # img3 = torch.cat([img3, img3, img3], 0)
         img4 = Image.open(path+"_D.bmp")
         img4 = transform_notrans(img4)
+        # img4 = torch.cat([img4, img4, img4], 0)
         img5 = Image.open(path+"_E.bmp")
         img5 = transform_notrans(img5)
+        # img5 = torch.cat([img5, img5, img5], 0)
         img6 = Image.open(path+"_F.bmp")
         img6 = transform_notrans(img6)
+        # img6 = torch.cat([img6, img6, img6], 0)
 
         # pil_img = torch.cat([pil_img, pil_img, pil_img], 0)
         label = int(0)

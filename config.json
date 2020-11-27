@@ -11,8 +11,8 @@
     "data_loader": {
         "type": "LFMB_3DFB_Pictures_Seged_Rectified",
         "args":{
-            "data_dir": "/home/zf/vscode/3d/3DFinger/outer_files",
-            "test_dir": "",
+            "data_dir": "/home/data/finger_vein/LFMB-3DFB_Pictures_Seged_Rectified_640_400/",
+            "test_dir": "/home/data/finger_vein/LFMB-3DFB_Pictures_Seged_Rectified_640_400/",
             "batch_size": 1,
             "shuffle": true,
             "validation_split": -1,

@@ -118,11 +118,11 @@ class Renderer(nn.Module):
         self.faces = faces
         
         # DIB渲染器
-        self.renderer = DIBRenderer(height=400, width=640, mode='Lambertian',camera_fov_y=66.96 * np.pi / 180.0)
+        self.renderer = DIBRenderer(height=640, width=400, mode='Lambertian',camera_fov_y=66.96 * np.pi / 180.0)
         self.renderer.set_look_at_parameters([0],[0],[0])
         # 设置相机参数
         # self.renderer.set_camera_parameters()
-        
+        # TODO: 相机平面归一化到Z轴垂直的XOY平面，确保初始椭圆能被看到
         # 预定义相机外参
         # 真实参数
         self.cam_mat = np.array([
@@ -181,7 +181,7 @@ class Renderer(nn.Module):
                 points.append(temp)
             objs.append(points)
         # 构造返回tensor, uvmap texture默认尺寸1280*1600
-        texture = torch.zeros([batchsize,3,1280*1600])
+        texture = torch.zeros([batchsize,2240,640])
         uv_val = torch.zeros([batchsize,self.point_num,2])
         
         for i in range(batchsize):
@@ -192,15 +192,15 @@ class Renderer(nn.Module):
             # 将uv索引处理为每点对应一个uv值
             w,h = faces.shape
             uv_list = {}
-            for i in range(w):
-                for j in range(h):
+            for m in range(w):
+                for n in range(h):
                     # 顶点序号和uv序号记一个映射
-                    if faces[i,j].item() in uv_list:
+                    if faces[m,n].item() in uv_list:
                         # print(i,j,mesh.faces[i,j],mesh.face_textures[i,j],uv_list[mesh.faces[i,j].item()])
                         # assert uv_list[mesh.faces[i,j].item()] == mesh.face_textures[i,j]
                         pass
                     else:
-                        uv_list[faces[i,j].item()] = vt_list[i,j]
+                        uv_list[faces[m,n].item()] = vt_list[m,n]
             for j in range(self.point_num):
                 uv_val[i][j] = torch.from_numpy(uv_val_in_obj[uv_list[i]])
         return texture,uv_val
@@ -224,7 +224,7 @@ class Renderer(nn.Module):
             self.renderer.camera_params = [camera_view_mtx, camera_view_shift, self.renderer.camera_params[2]]
             predictions, _, _ = self.renderer(points=[vertices, faces.long()],
                                             uv_bxpx2=uv,
-                                            texture_bx3xthxtw=texture)
+                                            texture_bx3xthxtw=texture.repeat(vertices.shape[0],3,1,1))
             temp = predictions.detach().cpu().numpy()[0]
             images.append(temp)
         return images
@@ -246,7 +246,7 @@ class Renderer(nn.Module):
         uv = uv_val
         texture = uv_map
         # 渲染N个视角 https://github.com/NVIDIAGameWorks/kaolin/pull/115
-        repro_imgs = self.render(vertices,faces,uv,texture)
+        repro_imgs = self.render(vertices,faces,uv.cuda(),texture.cuda())
         return repro_imgs
 
 class DR_3D_Model(nn.Module):

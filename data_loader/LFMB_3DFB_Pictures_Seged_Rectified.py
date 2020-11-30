@@ -55,11 +55,12 @@ class Train_Dataset(torch.utils.data.Dataset):
         handle = open(train_file)
         lines = handle.readlines()
         self.prefixs = list(set([item.split(',')[2] for item in lines[1:]]))
+        self.prefixs.sort()
         pass
 
     def __len__(self):
-        # return len(self.prefixs)
-        return 1
+        return len(self.prefixs)
+        # return 1
 
     def __getitem__(self, index):
         path = self.root+self.prefixs[index]
@@ -85,6 +86,7 @@ class Train_Dataset(torch.utils.data.Dataset):
         # pil_img = torch.cat([pil_img, pil_img, pil_img], 0)
         label = int(0)
         img = [img1,img2,img3,img4,img5,img6]
+        # print(path)
         return img,label,path
 
 class Test_Dataset(torch.utils.data.Dataset):
@@ -94,11 +96,12 @@ class Test_Dataset(torch.utils.data.Dataset):
         handle = open(train_file)
         lines = handle.readlines()
         self.prefixs = list(set([item.split(',')[2] for item in lines[1:]]))
+        self.prefixs.sort()
         pass
 
     def __len__(self):
-        # return len(self.prefixs)
-        return 1
+        return len(self.prefixs)
+        # return 1
 
     def __getitem__(self, index):
         path = self.root + self.prefixs[index]
@@ -124,4 +127,5 @@ class Test_Dataset(torch.utils.data.Dataset):
         # pil_img = torch.cat([pil_img, pil_img, pil_img], 0)
         label = int(0)
         img = [img1,img2,img3,img4,img5,img6]
+        print(path)
         return img,label,path

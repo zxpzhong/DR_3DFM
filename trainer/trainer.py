@@ -4,6 +4,7 @@ from torchvision.utils import make_grid
 from base import BaseTrainer
 from utils import inf_loop, MetricTracker,calc_eer
 import torch.nn.functional as F
+from tqdm import tqdm
 class Trainer(BaseTrainer):
     """
     Trainer class
@@ -38,31 +39,48 @@ class Trainer(BaseTrainer):
         """
         self.model.train()
         self.train_metrics.reset()
-        for batch_idx, (data, target ,path) in enumerate(self.data_loader):
+        for batch_idx, (data, target ,path) in enumerate(tqdm(self.data_loader)):
             data, target = [item.to(self.device) for item in data], target.to(self.device)
 
             self.optimizer.zero_grad()
             output = self.model(data,path)
-            loss = self.criterion(output, data)
+            # TODO: 视角数目参数化
+            loss = 0
+            for i in range(6):
+                img = output[i].permute(0,3,1,2)
+                loss += self.criterion(img, data[i])
+            loss/=6
             loss.backward()
             self.optimizer.step()
-            # TODO: 训练测试tensorboard可视化
-            self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
-            self.train_metrics.update('loss', loss.item())
-            for met in self.metric_ftns:
-                self.train_metrics.update(met.__name__, met(output, target))
-
+            # TODO: 训练测试tensorboard可视化 -> 
+            # [] 三维模型可视化
+            # [] 原图可视化
+            # [] 重构图像可视化
             if batch_idx % self.log_step == 0:
+                self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
+                self.train_metrics.update('loss', loss.item())
+                # for met in self.metric_ftns:
+                #     self.train_metrics.update(met.__name__, met(output, target))
+                # 合成两张图像
+                shape = data[0].shape
+                input_img = torch.zeros([6,shape[1],shape[2],shape[3]])
+                output_img = torch.zeros([6,shape[1],shape[2],shape[3]])
+                for i in range(6):
+                    input_img[i] = data[i][0].cpu()
+                    output_img[i] = output[i][0].permute(2,0,1).cpu().detach()
+                self.writer.add_image('input', make_grid(input_img, nrow=6, normalize=False))
+                self.writer.add_image('output', make_grid(output_img, nrow=6, normalize=False))
+                
                 self.logger.debug('Train Epoch: {} {} Loss: {:.6f}'.format(
                     epoch,
                     self._progress(batch_idx),
                     loss.item()))
-                self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
+            #     self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 
             if batch_idx == self.len_epoch:
                 break
         log = self.train_metrics.result()
-
+        self.do_validation = False
         if self.do_validation and epoch%self.config['trainer']['save_period'] == 0:
             val_log = self._valid_epoch(epoch)
             log.update(**{'val_'+k : v for k, v in val_log.items()})
@@ -82,7 +100,7 @@ class Trainer(BaseTrainer):
         self.valid_metrics.reset()
         with torch.no_grad():
             if self.veri_mode == False:
-                for batch_idx, (data, target) in enumerate(self.valid_data_loader):
+                for batch_idx, (data, target) in enumerate(tqdm(self.valid_data_loader)):
                     data, target = data.to(self.device), target.to(self.device)
 
                     output = self.model(data)

@@ -3,6 +3,42 @@ from utils.Finger.tool import tools as tl
 from utils.Finger.process import process_finger_data as pfd, faces_texture_mapping as ftm
 import numpy as np
 from utils.Finger.process import points_texture_mapping as tm
+
+
+def init():
+    # 六张bmp图片的像素信息，读取后放在全局变量中，避免每次都去重新读取
+    tl.bmp_pixel = [[], [], [], [], [], []]
+    # 哈希表，存储顶点对应的像素uv信息
+    tl.map_vertex_to_texture = dict()
+
+    # 哈希表,存储三角面片顶点对应的vt的index(行数)
+    tl.map_vertex_to_vt_index = dict()
+    # 每个相机对应的三角面片 如faces_belong_camera_A=[[1,3,5],[2,3,5]...]
+    # faces_belong_camera_A = []
+    # faces_belong_camera_B = []
+    # faces_belong_camera_C = []
+    # faces_belong_camera_D = []
+    # faces_belong_camera_E = []
+    # faces_belong_camera_F = []
+
+    # 所有相机对应的三角面片，A相机放在0索引，以此类推
+    tl.faces_belong_camera = [[], [], [], [], [], []]
+
+    # 所有相机对应的bmp应该crop出的范围，[Umin,Vmin,Umax,Vmax],初始化时给相反的最大最小值,这里取的10000和-100，因为不可能有超过这个范围的了
+    tl.bmp_crop_ranges = [[10000, 10000, -100, -100], [10000, 10000, -100, -100],
+                    [10000, 10000, -100, -100], [10000, 10000, -100, -100],
+                    [10000, 10000, -100, -100], [10000, 10000, -100, -100]]
+    # 提前计算出crop的宽度u_width和高度v_height,先初始化为0
+    tl.crops_width_and_height = [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]]
+    # 在得到crops_width_and_height后，提前计算出各个相机crop出的图在png中v所占的范围比重（0-1），例如A：0-0.25，B：0.25-0.4...F：0.8-1
+    tl.crops_v_scale_in_png = [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]]
+    # uvmap_png的长度和宽度
+    tl.uv_map_size = [0, 0]
+
+    # face的索引 寻找bug时使用
+    tl.face_index = 1
+
+
 '''
 入口参数：
     data_points : 数据点 , 二维numpy数组 , 第一维点数,第二维xyz坐标
@@ -22,6 +58,7 @@ def uv_map(data_points,faces_point,imgs):
         uv 值 uv_val_in_obj : uv数目 * 2
         uv索引 : 三角面片数目 * 3
     '''
+    init()
     imgs = [np.array(item[0][0].cpu())*255 for item in imgs]
     obj_suffix = '.obj'
     # 拿到mesh所有顶点数据

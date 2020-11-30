@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import Parameter
 import math
+import imageio
 from kaolin.graphics import DIBRenderer
 from kaolin.graphics.dib_renderer.utils.sphericalcoord import get_spherical_coords_x
 from kaolin.rep import TriangleMesh
@@ -122,7 +123,6 @@ class Renderer(nn.Module):
         self.renderer.set_look_at_parameters([0],[0],[0])
         # 设置相机参数
         # self.renderer.set_camera_parameters()
-        # TODO: 相机平面归一化到Z轴垂直的XOY平面，确保初始椭圆能被看到
         # 预定义相机外参
         # 真实参数
         self.cam_mat = np.array([
@@ -156,6 +156,7 @@ class Renderer(nn.Module):
         if torch.cuda.is_available():
             self.cam_mat = torch.FloatTensor(self.cam_mat).cuda()
             self.cameras_coordinate = torch.FloatTensor(self.cameras_coordinate).cuda()
+        self.gif_writer = imageio.get_writer('example.gif', mode='I')
         pass
             
     def texture_map(self,rec_mesh,imgs,faces):
@@ -201,8 +202,9 @@ class Renderer(nn.Module):
                         pass
                     else:
                         uv_list[faces[m,n].item()] = vt_list[m,n]
+            a = 1
             for j in range(self.point_num):
-                uv_val[i][j] = torch.from_numpy(uv_val_in_obj[uv_list[i]])
+                uv_val[i][j] = torch.from_numpy(uv_val_in_obj[uv_list[j]])
         return texture,uv_val
     
     def render(self,vertices,faces,uv,texture):
@@ -219,14 +221,15 @@ class Renderer(nn.Module):
         for i in range(self.N):
             # N个视角下渲染,每次渲染一个视角下的batchsize张图片
             # 设置相机参数
-            camera_view_mtx = self.cam_mat[i].unsqueeze(0)
-            camera_view_shift = self.cameras_coordinate[i].unsqueeze(0)
+            camera_view_mtx = self.cam_mat[i].repeat(vertices.shape[0],1,1)
+            camera_view_shift = self.cameras_coordinate[i].repeat(vertices.shape[0],1)
             self.renderer.camera_params = [camera_view_mtx, camera_view_shift, self.renderer.camera_params[2]]
             predictions, _, _ = self.renderer(points=[vertices, faces.long()],
                                             uv_bxpx2=uv,
-                                            texture_bx3xthxtw=texture.repeat(vertices.shape[0],3,1,1))
+                                            texture_bx3xthxtw=texture.unsqueeze(1).repeat(1,3,1,1))
             temp = predictions.detach().cpu().numpy()[0]
-            images.append(temp)
+            self.gif_writer.append_data((temp * 255).astype(np.uint8))
+            images.append(predictions)
         return images
         
     def forward(self,rec_mesh,imgs,faces):

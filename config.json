@@ -1,6 +1,6 @@
 {
     "name": "test",
-    "n_gpu": "0",
+    "n_gpu": "3",
 
     "arch": {
         "type": "DR_3D_Model",
@@ -13,7 +13,7 @@
         "args":{
             "data_dir": "/home/data/finger_vein/LFMB-3DFB_Pictures_Seged_Rectified_640_400/",
             "test_dir": "/home/data/finger_vein/LFMB-3DFB_Pictures_Seged_Rectified_640_400/",
-            "batch_size": 1,
+            "batch_size": 4,
             "shuffle": true,
             "validation_split": -1,
             "num_workers": 2,

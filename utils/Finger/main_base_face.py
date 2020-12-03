@@ -19,7 +19,7 @@ if __name__ == '__main__':
     # file_path = '/home/zf/vscode/3d/DR_3DFM/data/cylinder_template_mesh/0001_2_01'
     imgs = []
     for i in range(6):
-        path_str = '/home/zf/vscode/3d/DR_3DFM/data/cylinder_template_mesh/0001_2_01'.split("/")
+        path_str = '/home/zf/vscode/3d/DR_3DFM/data/LFMB_Visual_Hull_Meshes256/0001_2_01'.split("/")
         camera_name = tl.camera_index_to_name[i]
         pic_path_prefix = '/home/data/finger_vein/LFMB-3DFB_Pictures_Seged_Rectified_640_400/' + path_str[-1]  # todo 注意这里的索引会随着文件路径改变而改变
         pic_file_path = pic_path_prefix + '_' + camera_name + '.bmp'  # 拼接文件名
@@ -28,7 +28,7 @@ if __name__ == '__main__':
         imgs.append(cur_img)
     obj_suffix = '.obj'
     # 拿到mesh所有顶点数据
-    data_points, face_start_index = pfd.read_mesh_points('/home/zf/vscode/3d/DR_3DFM/data/cylinder_template_mesh/0001_2_01.obj')
+    data_points, face_start_index = pfd.read_mesh_points('/home/zf/vscode/3d/DR_3DFM/data/LFMB_Visual_Hull_Meshes256/0001_2_01.obj')
     # 求出所有顶点对应的中心点O
     center_point = pfd.get_center_point(data_points)
     # 获取相机平面的参数ax+by+cz+d=0,直接使用计算好的数据
@@ -42,6 +42,6 @@ if __name__ == '__main__':
                                                                    tl.cameras_coordinate_mapping, data_points)
 
     # 纹理映射部分，这里和之前先后顺序不同，要从三角面片出发，得到每个面对应的相机，再将三角面片上的三个顶点投影到这个相机对应的bmp图片上，找到uv值
-    faces_point = pfd.read_mesh_faces('/home/zf/vscode/3d/DR_3DFM/data/cylinder_template_mesh/0001_2_01.obj', face_start_index)  # 读取obj中face的顶点数据
+    faces_point = pfd.read_mesh_faces('/home/zf/vscode/3d/DR_3DFM/data/LFMB_Visual_Hull_Meshes256/0001_2_01.obj', face_start_index)  # 读取obj中face的顶点数据
     faces_texture = ftm.mapping_faces_gray(data_points, camera_index_to_points, faces_point, imgs)  # 拿到所有面的纹理区域
     print("程序执行时间为:", time.time() - start, "秒")

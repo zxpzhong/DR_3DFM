@@ -52,10 +52,10 @@ class Trainer(BaseTrainer):
             loss/=6
             loss.backward()
             self.optimizer.step()
-            # TODO: 训练测试tensorboard可视化 -> 
+            # 训练测试tensorboard可视化 -> 
             # [] 三维模型可视化
-            # [] 原图可视化
-            # [] 重构图像可视化
+            # [x] 原图可视化
+            # [x] 重构图像可视化
             if batch_idx % self.log_step == 0:
                 self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
                 self.train_metrics.update('loss', loss.item())

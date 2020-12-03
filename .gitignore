@@ -4,3 +4,8 @@ __init__.py
 saved/
 __pycache__/
 outer_files/
+*.stl
+*.png
+*.gif
+*.obj
+1.png

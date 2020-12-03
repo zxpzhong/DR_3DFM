@@ -56,6 +56,7 @@ class Train_Dataset(torch.utils.data.Dataset):
         lines = handle.readlines()
         self.prefixs = list(set([item.split(',')[2] for item in lines[1:]]))
         self.prefixs.sort()
+        # self.prefixs = ['0001_2_01']
         pass
 
     def __len__(self):

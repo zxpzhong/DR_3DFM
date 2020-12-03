@@ -12,8 +12,10 @@ import torchvision
 # uv贴图接口
 from utils.uvmap import uv_map
 import numpy as np
-
+import os
 import math
+import trimesh
+
 def isRotationMatrix(R) :
     Rt = np.transpose(R)
     shouldBeIdentity = np.dot(Rt, R)
@@ -100,7 +102,7 @@ class Mesh_Deform_Model(nn.Module):
         features_cat = torch.zeros([embeddings[0].shape[0],self.f_dim*self.N]).cuda()
         for i in range(len(embeddings)):
             features_cat[:,i*self.f_dim:(i+1)*self.f_dim] = embeddings[i]
-        points_move = self.fc(features_cat)
+        points_move = F.tanh(self.fc(features_cat))
         return points_move.reshape([points_move.shape[0],self.point_num,3])
 
 
@@ -120,7 +122,7 @@ class Renderer(nn.Module):
         
         # DIB渲染器
         self.renderer = DIBRenderer(height=640, width=400, mode='Lambertian',camera_fov_y=66.96 * np.pi / 180.0)
-        self.renderer.set_look_at_parameters([0],[0],[0])
+        self.renderer.set_look_at_parameters([0],[0],[0],fovx=57.77316 * np.pi / 180.0, fovy=44.95887 * np.pi / 180.0, near=0.01, far=10.0)
         # 设置相机参数
         # self.renderer.set_camera_parameters()
         # 预定义相机外参
@@ -156,7 +158,7 @@ class Renderer(nn.Module):
         if torch.cuda.is_available():
             self.cam_mat = torch.FloatTensor(self.cam_mat).cuda()
             self.cameras_coordinate = torch.FloatTensor(self.cameras_coordinate).cuda()
-        self.gif_writer = imageio.get_writer('example.gif', mode='I')
+        # self.gif_writer = imageio.get_writer('example.gif', mode='I')
         pass
             
     def texture_map(self,rec_mesh,imgs,faces):
@@ -205,6 +207,18 @@ class Renderer(nn.Module):
             a = 1
             for j in range(self.point_num):
                 uv_val[i][j] = torch.from_numpy(uv_val_in_obj[uv_list[j]])
+        
+        # DEBUG 保存mesh -》 只取第0个
+        if os.getenv('DEBUG') == '1':
+        # if True:
+            pass
+            # 贴图前
+            pointsarray = objs[0]
+            trianglesarray = self.faces
+            mesh = trimesh.Trimesh(vertices=pointsarray,faces=trianglesarray.cpu().detach())
+            mesh.export('1.stl')
+            # 贴图后
+        
         return texture,uv_val
     
     def render(self,vertices,faces,uv,texture):
@@ -228,7 +242,7 @@ class Renderer(nn.Module):
                                             uv_bxpx2=uv,
                                             texture_bx3xthxtw=texture.unsqueeze(1).repeat(1,3,1,1))
             temp = predictions.detach().cpu().numpy()[0]
-            self.gif_writer.append_data((temp * 255).astype(np.uint8))
+            # self.gif_writer.append_data((temp * 255).astype(np.uint8))
             images.append(predictions)
         return images
         
@@ -294,5 +308,6 @@ class DR_3D_Model(nn.Module):
             embeddings.append(self.img_embedding_model(images[i]))
         rec_mesh = self.mesh_deform_model(embeddings)
         rec_mesh = rec_mesh + self.ref_mesh.repeat(rec_mesh.shape[0],1,1)
+        # rec_mesh = self.ref_mesh.repeat(rec_mesh.shape[0],1,1)
         repro_imgs = self.renderer(rec_mesh,images,self.faces)
         return repro_imgs

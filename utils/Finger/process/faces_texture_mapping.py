@@ -294,7 +294,7 @@ def resize_png(png, size):
     return resize_res
 
 
-def write_uv_to_obj(uv_val_in_obj, vt_list, file_path='/home/zf/vscode/3d/DR_3DFM/data/cylinder_template_mesh/0001_2_01'):
+def write_uv_to_obj(uv_val_in_obj, vt_list, file_path='/home/zf/vscode/3d/DR_3DFM/data/cylinder_template_mesh/cylinder1022'):
     lines = []
     mtl_info = 'mtllib saved_spot.mtl' + '\n'
     lines.append(mtl_info)

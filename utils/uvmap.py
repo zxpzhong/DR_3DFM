@@ -76,9 +76,9 @@ def uv_map(data_points,faces_point,imgs):
                                                                        tl.cameras_coordinate_mapping, data_points)
     # 纹理映射部分，这里和之前先后顺序不同，要从三角面片出发，得到每个面对应的相机，再将三角面片上的三个顶点投影到这个相机对应的bmp图片上，找到uv值
     # faces_point = pfd.read_mesh_faces(file_path + obj_suffix,face_start_index)  # 读取obj中face的顶点数据
-    uv_map_png,uv_val_in_obj,vt_list = ftm.mapping_faces_gray(data_points,camera_index_to_points, faces_point, imgs)  # 拿到所有面的纹理区域
+    uv_map_png,uv_val_in_obj,vt_list = ftm.mapping_faces_gray(data_points,camera_index_to_points, faces_point+1, imgs)  # 拿到所有面的纹理区域
     # ftm.write_gray_to_obj(faces_texture, file_path)
-    return uv_map_png/255,uv_val_in_obj,vt_list
+    return uv_map_png/255,uv_val_in_obj,vt_list-1
 
 # '通过面进行纹理映射'
 if __name__ == '__main__':

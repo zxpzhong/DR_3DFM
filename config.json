@@ -1,6 +1,6 @@
 {
     "name": "test",
-    "n_gpu": "3",
+    "n_gpu": "2",
 
     "arch": {
         "type": "DR_3D_Model",
@@ -28,7 +28,7 @@
             "amsgrad": true
         }
     },
-    "loss": "MSE",
+    "loss": "L2",
     "metrics": [
         "accuracy", "top_k_acc"
     ],

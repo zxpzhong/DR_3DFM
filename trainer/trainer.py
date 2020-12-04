@@ -5,6 +5,10 @@ from base import BaseTrainer
 from utils import inf_loop, MetricTracker,calc_eer
 import torch.nn.functional as F
 from tqdm import tqdm
+from loss.loss import L1,L2,Lap_Loss
+
+VIEW_NUMS = 6
+
 class Trainer(BaseTrainer):
     """
     Trainer class
@@ -39,17 +43,24 @@ class Trainer(BaseTrainer):
         """
         self.model.train()
         self.train_metrics.reset()
-        for batch_idx, (data, target ,path) in enumerate(tqdm(self.data_loader)):
+        
+        for batch_idx, (data, target, mask) in enumerate(tqdm(self.data_loader)):
             data, target = [item.to(self.device) for item in data], target.to(self.device)
-
+            mask = [item.to(self.device) for item in mask]
             self.optimizer.zero_grad()
-            output = self.model(data,path)
-            # TODO: 视角数目参数化
+            output,rec_mesh,img_probs = self.model(data)
             loss = 0
-            for i in range(6):
+            for i in range(VIEW_NUMS):
                 img = output[i].permute(0,3,1,2)
-                loss += self.criterion(img, data[i])
-            loss/=6
+                # colored image L1 loss
+                loss += L1(img, data[i])
+                # 轮廓mask IOU L1/L2
+                # loss += L1(torch.where(img > 0,torch.ones_like(img) ,torch.zeros_like(img)) , torch.where(data[i] > 0,torch.ones_like(img) ,torch.zeros_like(img)) )
+                loss += L2(img_probs[i],mask[i])
+                # Lap平滑损失
+                loss += 0.01 * Lap_Loss(self.model.adj,rec_mesh)
+                
+            loss/=VIEW_NUMS
             loss.backward()
             self.optimizer.step()
             # 训练测试tensorboard可视化 -> 

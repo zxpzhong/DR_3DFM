@@ -102,7 +102,8 @@ class Mesh_Deform_Model(nn.Module):
         features_cat = torch.zeros([embeddings[0].shape[0],self.f_dim*self.N]).cuda()
         for i in range(len(embeddings)):
             features_cat[:,i*self.f_dim:(i+1)*self.f_dim] = embeddings[i]
-        points_move = F.tanh(self.fc(features_cat))
+        points_move = 2*F.tanh(self.fc(features_cat))
+        # points_move = self.fc(features_cat)
         return points_move.reshape([points_move.shape[0],self.point_num,3])
 
 
@@ -232,19 +233,21 @@ class Renderer(nn.Module):
             N个视角下的渲染图像:NxCxHxW
         '''
         images = []
+        img_probs = []
         for i in range(self.N):
             # N个视角下渲染,每次渲染一个视角下的batchsize张图片
             # 设置相机参数
             camera_view_mtx = self.cam_mat[i].repeat(vertices.shape[0],1,1)
             camera_view_shift = self.cameras_coordinate[i].repeat(vertices.shape[0],1)
             self.renderer.camera_params = [camera_view_mtx, camera_view_shift, self.renderer.camera_params[2]]
-            predictions, _, _ = self.renderer(points=[vertices, faces.long()],
+            predictions, img_prob, _ = self.renderer(points=[vertices, faces.long()],
                                             uv_bxpx2=uv,
                                             texture_bx3xthxtw=texture.unsqueeze(1).repeat(1,3,1,1))
             temp = predictions.detach().cpu().numpy()[0]
             # self.gif_writer.append_data((temp * 255).astype(np.uint8))
             images.append(predictions)
-        return images
+            img_probs.append(img_prob)
+        return images,img_probs
         
     def forward(self,rec_mesh,imgs,faces):
         '''
@@ -283,9 +286,21 @@ class DR_3D_Model(nn.Module):
         mesh = TriangleMesh.from_obj(ref_path)
         self.faces = mesh.faces.int()
         self.ref_mesh = mesh.vertices
+        # 构造adj mat
+        self.adj = torch.zeros([self.point_num,self.point_num])
+        for i in range(self.faces.shape[0]):
+            a,b,c = self.faces[i]
+            self.adj[a,b] = 1
+            self.adj[b,a] = 1
+            self.adj[a,c] = 1
+            self.adj[c,a] = 1
+            self.adj[b,c] = 1
+            self.adj[c,b] = 1
+            
         if torch.cuda.is_available():
             self.ref_mesh = self.ref_mesh.cuda()
             self.faces = self.faces.cuda()
+            self.adj = self.adj.cuda()
         
         # 图片特征提取网络
         self.img_embedding_model = Img_Embedding_Model()
@@ -298,7 +313,7 @@ class DR_3D_Model(nn.Module):
         
 
         
-    def forward(self, images ,path):
+    def forward(self, images):
         '''
         输入: N张图片 N list C*H*W
         输出: 对应N个视角的图片 : N list C*H*W
@@ -309,5 +324,5 @@ class DR_3D_Model(nn.Module):
         rec_mesh = self.mesh_deform_model(embeddings)
         rec_mesh = rec_mesh + self.ref_mesh.repeat(rec_mesh.shape[0],1,1)
         # rec_mesh = self.ref_mesh.repeat(rec_mesh.shape[0],1,1)
-        repro_imgs = self.renderer(rec_mesh,images,self.faces)
-        return repro_imgs
+        repro_imgs,img_probs = self.renderer(rec_mesh,images,self.faces)
+        return repro_imgs,rec_mesh,img_probs

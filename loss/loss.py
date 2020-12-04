@@ -15,11 +15,12 @@ def L2(recon, data):
 def L1(recon,data):
     return F.l1_loss(recon,data)
 
-def loss_lap(mesh):
-    # 邻接矩阵N*N @ 顶点N*3 = N*3
-    new_lap = torch.matmul(mesh.adj, mesh.vertices)
+def Lap_Loss(adj,vertices):
+    # 邻接矩阵N*N @ 顶点N*3 = N*3 -> 拉普拉斯坐标
+    new_lap = torch.matmul(adj, vertices)
     # loss = mean(新的lap N*3 - 原始顶点N*3)
-    loss = 0.01 * torch.mean((new_lap - mesh.vertices) ** 2) * mesh.vertices.shape[0] * 3
+    # 新的拉普拉斯坐标和原坐标的差距最小 -> 让顶点的分布尽可能均匀,每个点处于周围的中间!
+    loss = 0.01 * torch.mean((new_lap - vertices) ** 2) * vertices.shape[0] * 3
     return loss 
 
 def loss_flat(mesh, norms): 

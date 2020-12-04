@@ -87,8 +87,15 @@ class Train_Dataset(torch.utils.data.Dataset):
         # pil_img = torch.cat([pil_img, pil_img, pil_img], 0)
         label = int(0)
         img = [img1,img2,img3,img4,img5,img6]
+        mask1 = torch.where(torch.sum(img1,dim=0) > 0,torch.ones_like(torch.sum(img1,dim=0)) ,torch.zeros_like(torch.sum(img1,dim=0))).unsqueeze(-1)
+        mask2 = torch.where(torch.sum(img2,dim=0) > 0,torch.ones_like(torch.sum(img2,dim=0)) ,torch.zeros_like(torch.sum(img2,dim=0))).unsqueeze(-1)
+        mask3 = torch.where(torch.sum(img3,dim=0) > 0,torch.ones_like(torch.sum(img3,dim=0)) ,torch.zeros_like(torch.sum(img3,dim=0))).unsqueeze(-1)
+        mask4 = torch.where(torch.sum(img4,dim=0) > 0,torch.ones_like(torch.sum(img4,dim=0)) ,torch.zeros_like(torch.sum(img4,dim=0))).unsqueeze(-1)
+        mask5 = torch.where(torch.sum(img5,dim=0) > 0,torch.ones_like(torch.sum(img5,dim=0)) ,torch.zeros_like(torch.sum(img5,dim=0))).unsqueeze(-1)
+        mask6 = torch.where(torch.sum(img6,dim=0) > 0,torch.ones_like(torch.sum(img6,dim=0)) ,torch.zeros_like(torch.sum(img6,dim=0))).unsqueeze(-1)
+        mask = [mask1,mask2,mask3,mask4,mask5,mask6]
         # print(path)
-        return img,label,path
+        return img,label,mask
 
 class Test_Dataset(torch.utils.data.Dataset):
     def __init__(self,root = '/home/data/finger_vein/LFMB-3DFB_Pictures_Seged_Rectified_640_400/'):

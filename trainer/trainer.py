@@ -5,7 +5,7 @@ from base import BaseTrainer
 from utils import inf_loop, MetricTracker,calc_eer
 import torch.nn.functional as F
 from tqdm import tqdm
-from loss.loss import L1,L2,Lap_Loss
+from loss.loss import L1,L2,Lap_Loss,CE,Edge_regularization
 
 VIEW_NUMS = 6
 
@@ -48,17 +48,19 @@ class Trainer(BaseTrainer):
             data, target = [item.to(self.device) for item in data], target.to(self.device)
             mask = [item.to(self.device) for item in mask]
             self.optimizer.zero_grad()
-            output,rec_mesh,img_probs = self.model(data)
+            output,rec_mesh,img_probs,edges = self.model(data)
             loss = 0
             for i in range(VIEW_NUMS):
                 img = output[i].permute(0,3,1,2)
                 # colored image L1 loss
-                loss += L1(img, data[i])
+                # loss += CE(img, data[i])
                 # 轮廓mask IOU L1/L2
                 # loss += L1(torch.where(img > 0,torch.ones_like(img) ,torch.zeros_like(img)) , torch.where(data[i] > 0,torch.ones_like(img) ,torch.zeros_like(img)) )
-                loss += L2(img_probs[i],mask[i])
+                loss += CE(img_probs[i],mask[i])
                 # Lap平滑损失
-                loss += 0.01 * Lap_Loss(self.model.adj,rec_mesh)
+                # loss += 0.01 * Lap_Loss(self.model.adj,rec_mesh)
+                # 边长损失
+                loss += Edge_regularization(rec_mesh,edges)
                 
             loss/=VIEW_NUMS
             loss.backward()

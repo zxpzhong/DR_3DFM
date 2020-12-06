@@ -1,13 +1,13 @@
 import torch.nn.functional as F
 import torch
 # external loss function from loss dir
-
+import torch.nn as nn
 
 def nll_loss(output, target):
     return F.nll_loss(output, target)
 
 def CE(output, target):
-    return F.cross_entropy(output, target)
+    return F.binary_cross_entropy(output, target)
 
 def L2(recon, data):
     return F.mse_loss(recon,data)
@@ -39,3 +39,13 @@ def loss_flat(mesh, norms):
 # 2. colored image L1 loss
 # 3. 形状正则化的smooth loss
 # 4. 形状正则化的lap loss
+
+
+def Edge_regularization(pred, edges):
+    """
+    :param pred: batch_size * num_points * 3
+    :param edges: num_edges * 2
+    :return:
+    """
+    l2_loss = nn.MSELoss(reduction='mean')
+    return l2_loss(pred[:, edges[:, 0]], pred[:, edges[:, 1]]) * pred.size(-1)

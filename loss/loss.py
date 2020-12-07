@@ -20,7 +20,7 @@ def Lap_Loss(adj,vertices):
     new_lap = torch.matmul(adj, vertices)
     # loss = mean(新的lap N*3 - 原始顶点N*3)
     # 新的拉普拉斯坐标和原坐标的差距最小 -> 让顶点的分布尽可能均匀,每个点处于周围的中间!
-    loss = 0.01 * torch.mean((new_lap - vertices) ** 2) * vertices.shape[0] * 3
+    loss = torch.mean((new_lap - vertices) ** 2) * vertices.shape[0] * 3
     return loss 
 
 def loss_flat(mesh, norms): 

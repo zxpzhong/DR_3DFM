@@ -289,7 +289,7 @@ class DR_3D_Model(nn.Module):
         # 构造adj mat
         self.adj = torch.zeros([self.point_num,self.point_num])
         
-        self.edges = nn.ParameterList([nn.Parameter(edges, requires_grad=False) for edges in self.faces])
+        # self.edges = nn.Parameter(self.faces, requires_grad=False)
         for i in range(self.faces.shape[0]):
             a,b,c = self.faces[i]
             self.adj[a,b] = 1
@@ -327,4 +327,4 @@ class DR_3D_Model(nn.Module):
         rec_mesh = rec_mesh + self.ref_mesh.repeat(rec_mesh.shape[0],1,1)
         # rec_mesh = self.ref_mesh.repeat(rec_mesh.shape[0],1,1)
         repro_imgs,img_probs = self.renderer(rec_mesh,images,self.faces)
-        return repro_imgs,rec_mesh,img_probs,self.edges
+        return repro_imgs,rec_mesh,img_probs,self.faces.long()

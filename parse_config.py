@@ -40,7 +40,7 @@ class ConfigParser:
             os.mkdir(target_path)
         target_name = run_id+'.zip'
         source_path = './'
-        except_dir = ['saved','__pycache__','.ipynb_checkpoints']
+        except_dir = ['saved','__pycache__','.ipynb_checkpoints','.git']
         except_file = ['pth']
         ZIPCODE(target_path,target_name,source_path,except_dir,except_file)
 

@@ -2,10 +2,11 @@ import numpy as np
 import torch
 from torchvision.utils import make_grid
 from base import BaseTrainer
-from utils import inf_loop, MetricTracker,calc_eer
+from utils import inf_loop, MetricTracker,calc_eer,save_mesh
 import torch.nn.functional as F
 from tqdm import tqdm
 from loss.loss import L1,L2,Lap_Loss,CE,Edge_regularization
+import os
 
 VIEW_NUMS = 6
 
@@ -29,9 +30,9 @@ class Trainer(BaseTrainer):
         self.valid_data_loader = valid_data_loader
         self.do_validation = self.valid_data_loader is not None
         self.lr_scheduler = lr_scheduler
-        self.log_step = int(np.sqrt(data_loader.batch_size))
+        self.log_step = 2*int(np.sqrt(data_loader.batch_size))
 
-        self.train_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
+        self.train_metrics = MetricTracker('loss','loss_img','loss_mask','loss_edge', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
         self.valid_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
 
     def _train_epoch(self, epoch):
@@ -49,47 +50,55 @@ class Trainer(BaseTrainer):
             mask = [item.to(self.device) for item in mask]
             self.optimizer.zero_grad()
             output,rec_mesh,img_probs,edges = self.model(data)
-            loss = 0
+            loss_img = 0
+            loss_mask = 0
+            loss_edge = 0
             for i in range(VIEW_NUMS):
                 img = output[i].permute(0,3,1,2)
                 # colored image L1 loss
-                # loss += CE(img, data[i])
+                loss_img += CE(img, data[i])
                 # 轮廓mask IOU L1/L2
                 # loss += L1(torch.where(img > 0,torch.ones_like(img) ,torch.zeros_like(img)) , torch.where(data[i] > 0,torch.ones_like(img) ,torch.zeros_like(img)) )
-                loss += CE(img_probs[i],mask[i])
+                loss_mask += L1(img_probs[i],mask[i])
                 # Lap平滑损失
                 # loss += 0.01 * Lap_Loss(self.model.adj,rec_mesh)
                 # 边长损失
-                loss += Edge_regularization(rec_mesh,edges)
-                
+                loss_edge += Edge_regularization(rec_mesh,edges)
+            loss = loss_img+loss_mask+loss_edge
             loss/=VIEW_NUMS
             loss.backward()
             self.optimizer.step()
             # 训练测试tensorboard可视化 -> 
-            # [] 三维模型可视化
+            # [x] 三维模型可视化
             # [x] 原图可视化
             # [x] 重构图像可视化
             if batch_idx % self.log_step == 0:
-                self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
+                # 写入当前step
+                step = (epoch - 1) * self.len_epoch + batch_idx
+                self.writer.set_step(step)
+                # 写入损失曲线
+                self.train_metrics.update('loss_img', loss_img.item())
+                self.train_metrics.update('loss_mask', loss_mask.item())
+                self.train_metrics.update('loss_edge', loss_edge.item())
                 self.train_metrics.update('loss', loss.item())
-                # for met in self.metric_ftns:
-                #     self.train_metrics.update(met.__name__, met(output, target))
                 # 合成两张图像
                 shape = data[0].shape
                 input_img = torch.zeros([6,shape[1],shape[2],shape[3]])
                 output_img = torch.zeros([6,shape[1],shape[2],shape[3]])
+                # tb显示图像
                 for i in range(6):
                     input_img[i] = data[i][0].cpu()
                     output_img[i] = output[i][0].permute(2,0,1).cpu().detach()
                 self.writer.add_image('input', make_grid(input_img, nrow=6, normalize=False))
                 self.writer.add_image('output', make_grid(output_img, nrow=6, normalize=False))
-                
+                # 控制台log
                 self.logger.debug('Train Epoch: {} {} Loss: {:.6f}'.format(
                     epoch,
                     self._progress(batch_idx),
                     loss.item()))
-            #     self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
-
+                # 保存为三维模型, point写入obj文件, face固定的, uv坐标值
+                save_mesh(rec_mesh[0].cpu().detach(),edges.cpu().detach(),os.path.join(self.config.log_dir,'{}_{}_{}.stl'.format(epoch,batch_idx,step)))
+                
             if batch_idx == self.len_epoch:
                 break
         log = self.train_metrics.result()

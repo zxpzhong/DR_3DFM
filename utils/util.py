@@ -3,7 +3,7 @@ import pandas as pd
 from pathlib import Path
 from itertools import repeat
 from collections import OrderedDict
-
+import trimesh
 
 def ensure_dir(dirname):
     dirname = Path(dirname)
@@ -188,6 +188,12 @@ def calc_eer(distances, label):
     # print("intra_cnt is : {} , inter_cnt is {} , intra_len is {} , inter_len is {}".format(intra_cnt_final,inter_cnt_final,intra_len_final,inter_len_final))
 
     return intra_cnt_final,inter_cnt_final,intra_len_final,inter_len_final,eer, bestThresh, minV
+
+
+# 保存为trimesh
+def save_mesh(v,f,name = 'stuff.stl'):
+    mesh = trimesh.Trimesh(vertices = v, faces = f)
+    mesh.export(name)
 
 
 if __name__ == '__main__':

@@ -30,7 +30,7 @@ class ConfigParser:
             run_id = datetime.now().strftime(r'%m%d_%H%M%S')
         else:
             run_id = datetime.now().strftime(r'%m%d_%H%M%S')+'_'+run_id
-        
+        print("save dir name : {}".format(run_id))
         # ZIP code [ default choice ]
         from utils.ZIPCODE import ZIPCODE
         import time

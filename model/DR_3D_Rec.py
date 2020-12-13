@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from torch.nn import Parameter
 import math
 import imageio
+import kaolin as kal
 from kaolin.graphics import DIBRenderer
 from kaolin.graphics.dib_renderer.utils.sphericalcoord import get_spherical_coords_x
 from kaolin.rep import TriangleMesh
@@ -283,15 +284,14 @@ class DR_3D_Model(nn.Module):
         
         # 参考mesh
         # 添加参考mesh信息
-        mesh = TriangleMesh.from_obj(ref_path)
-        self.faces = mesh.faces.int()
-        self.ref_mesh = mesh.vertices
-        # 构造adj mat
+        # mesh = TriangleMesh.from_obj(ref_path)
+        self.mesh = kal.rep.TriangleMesh.from_obj(ref_path, enable_adjacency=True)
+        # # 构造adj mat
         self.adj = torch.zeros([self.point_num,self.point_num])
         
         # self.edges = nn.Parameter(self.faces, requires_grad=False)
-        for i in range(self.faces.shape[0]):
-            a,b,c = self.faces[i]
+        for i in range(self.mesh.faces.shape[0]):
+            a,b,c = self.mesh.faces[i]
             self.adj[a,b] = 1
             self.adj[b,a] = 1
             self.adj[a,c] = 1
@@ -300,9 +300,8 @@ class DR_3D_Model(nn.Module):
             self.adj[c,b] = 1
             
         if torch.cuda.is_available():
-            self.ref_mesh = self.ref_mesh.cuda()
-            self.faces = self.faces.cuda()
             self.adj = self.adj.cuda()
+            self.mesh.cuda()
         
         # 图片特征提取网络
         self.img_embedding_model = Img_Embedding_Model()
@@ -311,7 +310,7 @@ class DR_3D_Model(nn.Module):
         self.mesh_deform_model = Mesh_Deform_Model(N=self.N,f_dim=self.f_dim,point_num = self.point_num)
         
         # 可微渲染器
-        self.renderer = Renderer(N=self.N,f_dim=self.f_dim,point_num = self.point_num,faces = self.faces)
+        self.renderer = Renderer(N=self.N,f_dim=self.f_dim,point_num = self.point_num,faces = self.mesh.faces)
         
 
         
@@ -324,7 +323,6 @@ class DR_3D_Model(nn.Module):
         for i in range(len(images)):
             embeddings.append(self.img_embedding_model(images[i]))
         rec_mesh = self.mesh_deform_model(embeddings)
-        rec_mesh = rec_mesh + self.ref_mesh.repeat(rec_mesh.shape[0],1,1)
-        # rec_mesh = self.ref_mesh.repeat(rec_mesh.shape[0],1,1)
-        repro_imgs,img_probs = self.renderer(rec_mesh,images,self.faces)
-        return repro_imgs,rec_mesh,img_probs,self.faces.long()
+        rec_mesh = rec_mesh + self.mesh.vertices.repeat(rec_mesh.shape[0],1,1)
+        repro_imgs,img_probs = self.renderer(rec_mesh,images,self.mesh.faces)
+        return repro_imgs,rec_mesh,img_probs,self.mesh

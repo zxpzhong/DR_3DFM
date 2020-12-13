@@ -23,11 +23,25 @@ def Lap_Loss(adj,vertices):
     loss = torch.mean((new_lap - vertices) ** 2) * vertices.shape[0] * 3
     return loss 
 
-def loss_flat(mesh, norms): 
+
+def compute_normals(vertex_positions,mesh):
+    """
+    Compute face normals from the *final* vertex positions (not deltas).
+    """
+    a = vertex_positions[:, mesh.faces[:, 0]]
+    b = vertex_positions[:, mesh.faces[:, 1]]
+    c = vertex_positions[:, mesh.faces[:, 2]]
+    v1 = b - a
+    v2 = c - a
+    normal = torch.cross(v1, v2, dim=2)
+    return F.normalize(normal, dim=2)
+
+def Loss_flat(raw_vtx,mesh): 
+    norms = compute_normals(raw_vtx,mesh)
     loss  = 0.
     for i in range(3): 
         norm1 = norms
-        norm2 = norms[mesh.ff[:, i]]
+        norm2 = norms[:, mesh.ff[:, i]]
         cos = torch.sum(norm1 * norm2, dim=1)
         loss += torch.mean((cos - 1) ** 2) 
     loss *= (mesh.faces.shape[0]/2.)

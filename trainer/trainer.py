@@ -5,7 +5,7 @@ from base import BaseTrainer
 from utils import inf_loop, MetricTracker,calc_eer,save_mesh
 import torch.nn.functional as F
 from tqdm import tqdm
-from loss.loss import L1,L2,Lap_Loss,CE,Edge_regularization
+from loss.loss import L1,L2,Lap_Loss,CE,Edge_regularization,Loss_flat
 import os
 
 VIEW_NUMS = 6
@@ -32,7 +32,7 @@ class Trainer(BaseTrainer):
         self.lr_scheduler = lr_scheduler
         self.log_step = 2*int(np.sqrt(data_loader.batch_size))
 
-        self.train_metrics = MetricTracker('loss','loss_img','loss_mask','loss_edge', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
+        self.train_metrics = MetricTracker('loss','loss_img','loss_mask','loss_edge','loss_flat','loss_lap', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
         self.valid_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
 
     def _train_epoch(self, epoch):
@@ -49,29 +49,31 @@ class Trainer(BaseTrainer):
             data, target = [item.to(self.device) for item in data], target.to(self.device)
             mask = [item.to(self.device) for item in mask]
             self.optimizer.zero_grad()
-            output,rec_mesh,img_probs,edges = self.model(data)
+            output,rec_mesh,img_probs,mesh = self.model(data)
             loss_img = 0
             loss_mask = 0
+            loss_lap = 0
             loss_edge = 0
+            loss_flat = 0
             for i in range(VIEW_NUMS):
                 img = output[i].permute(0,3,1,2)
                 # colored image L1 loss
-                loss_img += CE(img, data[i])
+                loss_img += L1(img, data[i])
                 # 轮廓mask IOU L1/L2
                 # loss += L1(torch.where(img > 0,torch.ones_like(img) ,torch.zeros_like(img)) , torch.where(data[i] > 0,torch.ones_like(img) ,torch.zeros_like(img)) )
                 loss_mask += L1(img_probs[i],mask[i])
                 # Lap平滑损失
-                # loss += 0.01 * Lap_Loss(self.model.adj,rec_mesh)
+                loss_lap += 0.0001*Lap_Loss(self.model.adj,rec_mesh)
                 # 边长损失
-                loss_edge += Edge_regularization(rec_mesh,edges)
-            loss = loss_img+loss_mask+loss_edge
+                loss_edge += Edge_regularization(rec_mesh,mesh.faces.long())
+                # 法向损失
+                loss_flat += 0.0000001*Loss_flat(rec_mesh,mesh)
+                
+            loss = loss_img+loss_mask+loss_lap+loss_edge+loss_flat
             loss/=VIEW_NUMS
             loss.backward()
             self.optimizer.step()
-            # 训练测试tensorboard可视化 -> 
-            # [x] 三维模型可视化
-            # [x] 原图可视化
-            # [x] 重构图像可视化
+            # log
             if batch_idx % self.log_step == 0:
                 # 写入当前step
                 step = (epoch - 1) * self.len_epoch + batch_idx
@@ -79,7 +81,9 @@ class Trainer(BaseTrainer):
                 # 写入损失曲线
                 self.train_metrics.update('loss_img', loss_img.item())
                 self.train_metrics.update('loss_mask', loss_mask.item())
+                self.train_metrics.update('loss_lap', loss_lap.item())
                 self.train_metrics.update('loss_edge', loss_edge.item())
+                self.train_metrics.update('loss_flat', loss_flat.item())
                 self.train_metrics.update('loss', loss.item())
                 # 合成两张图像
                 shape = data[0].shape
@@ -97,7 +101,7 @@ class Trainer(BaseTrainer):
                     self._progress(batch_idx),
                     loss.item()))
                 # 保存为三维模型, point写入obj文件, face固定的, uv坐标值
-                save_mesh(rec_mesh[0].cpu().detach(),edges.cpu().detach(),os.path.join(self.config.log_dir,'{}_{}_{}.stl'.format(epoch,batch_idx,step)))
+                save_mesh(rec_mesh[0].cpu().detach(),mesh.faces.long().cpu().detach(),os.path.join(self.config.log_dir,'{}_{}_{}.stl'.format(epoch,batch_idx,step)))
                 
             if batch_idx == self.len_epoch:
                 break

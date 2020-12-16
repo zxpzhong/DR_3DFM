@@ -11,12 +11,12 @@ from torch.nn import init
 '''
 DNN from external file
 '''
-from model.MobileNet2 import MobileNet2
-from model.mobilenetv3 import MobileNetV3
-from model.shufflenet import ShuffleNet
-from model.shufflenet2 import ShuffleNet2
-from model.efficientnet import efficientnet
-from model.ghostnet import GhostNet
+# from model.MobileNet2 import MobileNet2
+# from model.mobilenetv3 import MobileNetV3
+# from model.shufflenet import ShuffleNet
+# from model.shufflenet2 import ShuffleNet2
+# from model.efficientnet import efficientnet
+# from model.ghostnet import GhostNet
 from model.DR_3D_Rec import DR_3D_Model
 '''
 MnistModel--------------------------------

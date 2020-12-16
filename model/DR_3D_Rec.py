@@ -103,7 +103,7 @@ class Mesh_Deform_Model(nn.Module):
         features_cat = torch.zeros([embeddings[0].shape[0],self.f_dim*self.N]).cuda()
         for i in range(len(embeddings)):
             features_cat[:,i*self.f_dim:(i+1)*self.f_dim] = embeddings[i]
-        points_move = 2*F.tanh(self.fc(features_cat))
+        points_move = 0.5*F.tanh(self.fc(features_cat))
         # points_move = self.fc(features_cat)
         return points_move.reshape([points_move.shape[0],self.point_num,3])
 

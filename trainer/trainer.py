@@ -58,16 +58,16 @@ class Trainer(BaseTrainer):
             for i in range(VIEW_NUMS):
                 img = output[i].permute(0,3,1,2)
                 # colored image L1 loss
-                loss_img += L1(img, data[i])
+                # loss_img += L1(img, data[i])
                 # 轮廓mask IOU L1/L2
                 # loss += L1(torch.where(img > 0,torch.ones_like(img) ,torch.zeros_like(img)) , torch.where(data[i] > 0,torch.ones_like(img) ,torch.zeros_like(img)) )
                 loss_mask += L1(img_probs[i],mask[i])
                 # Lap平滑损失
-                loss_lap += 0.0001*Lap_Loss(self.model.adj,rec_mesh)
+                # loss_lap += 0.0001*Lap_Loss(self.model.adj,rec_mesh)
                 # 边长损失
-                loss_edge += Edge_regularization(rec_mesh,mesh.faces.long())
+                # loss_edge += Edge_regularization(rec_mesh,mesh.faces.long())
                 # 法向损失
-                loss_flat += 0.0000001*Loss_flat(rec_mesh,mesh)
+                loss_flat += 0.0001*Loss_flat(rec_mesh,mesh)
                 
             loss = loss_img+loss_mask+loss_lap+loss_edge+loss_flat
             loss/=VIEW_NUMS
@@ -79,10 +79,10 @@ class Trainer(BaseTrainer):
                 step = (epoch - 1) * self.len_epoch + batch_idx
                 self.writer.set_step(step)
                 # 写入损失曲线
-                self.train_metrics.update('loss_img', loss_img.item())
+                # self.train_metrics.update('loss_img', loss_img.item())
                 self.train_metrics.update('loss_mask', loss_mask.item())
-                self.train_metrics.update('loss_lap', loss_lap.item())
-                self.train_metrics.update('loss_edge', loss_edge.item())
+                # self.train_metrics.update('loss_lap', loss_lap.item())
+                # self.train_metrics.update('loss_edge', loss_edge.item())
                 self.train_metrics.update('loss_flat', loss_flat.item())
                 self.train_metrics.update('loss', loss.item())
                 # 合成两张图像

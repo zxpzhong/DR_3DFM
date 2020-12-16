@@ -28,21 +28,29 @@ def compute_normals(vertex_positions,mesh):
     """
     Compute face normals from the *final* vertex positions (not deltas).
     """
+    # 取出所有三角面片的第一个顶点、第二个顶点、第三个顶点
     a = vertex_positions[:, mesh.faces[:, 0]]
     b = vertex_positions[:, mesh.faces[:, 1]]
     c = vertex_positions[:, mesh.faces[:, 2]]
+    # 三角形第一条边
     v1 = b - a
+    # 第二条变
     v2 = c - a
+    # 叉积求法向
     normal = torch.cross(v1, v2, dim=2)
+    # 长度归一化
     return F.normalize(normal, dim=2)
 
 def Loss_flat(raw_vtx,mesh): 
+    # mesh.ff.shape : 2040*3（面数*3）
+    # ff的意思是face2face
+    # 求出每个三角形的法向
     norms = compute_normals(raw_vtx,mesh)
     loss  = 0.
-    for i in range(3): 
-        norm1 = norms
-        norm2 = norms[:, mesh.ff[:, i]]
-        cos = torch.sum(norm1 * norm2, dim=1)
+    for i in range(3):
+        norm1 = norms # 这个就是上面计算得到的每个面的法向
+        norm2 = norms[:, mesh.ff[:, i]] # 要按照面的相邻关系对应上
+        cos = torch.sum(norm1 * norm2, dim=2)
         loss += torch.mean((cos - 1) ** 2) 
     loss *= (mesh.faces.shape[0]/2.)
     return loss

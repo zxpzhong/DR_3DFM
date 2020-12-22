@@ -7,8 +7,8 @@
 @github:https://github.com/huoxubugai/3DFinger
 """
 
-from process import process_finger_data as pfd, faces_texture_mapping as ftm
-from tool import tools as tl
+from utils.Finger.process import process_finger_data as pfd, faces_texture_mapping as ftm
+from utils.Finger.tool import tools as tl
 import time
 import cv2
 

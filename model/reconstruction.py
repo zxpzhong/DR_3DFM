@@ -91,7 +91,7 @@ class ReconstructionNetwork(nn.Module):
         self.base_res_h = 4
         self.base_res_w = 2 if symmetric else 4
             
-        self.fc1_tex = nn.Linear(1024*3, self.base_res_h*self.base_res_w*256)
+        self.fc1_tex = nn.Linear(1024*6, self.base_res_h*self.base_res_w*256)
         self.blk1 = ResBlock(256, 512, self.pad) # 4 -> 8
         self.blk2 = ResBlock(512, 256, self.pad) # 8 -> 16
         self.blk3 = ResBlock(256, 256, self.pad) # 16 -> 32 (k=1)

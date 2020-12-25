@@ -23,27 +23,39 @@ class MeshTemplate:
         print(f'Indices: {mesh.faces.shape}')
         print(f'UV coords: {mesh.uvs.shape}')
         print(f'UV indices: {mesh.face_textures.shape}')
-
+        # 取出y方向(第二个方向)上的最大值和最小值位置,作为两极
         poles = [mesh.vertices[:, 1].argmax().item(), mesh.vertices[:, 1].argmin().item()] # North pole, south pole
 
         # Compute reflection information (for mesh symmetry)
+        # 对于x轴向
         axis = 0
         if version.parse(torch.__version__) < version.parse('1.2'):
             neg_indices = torch.nonzero(mesh.vertices[:, axis] < -1e-4)[:, 0].cpu().numpy()
             zero_indices = torch.nonzero(torch.abs(mesh.vertices[:, axis]) < 1e-4)[:, 0].cpu().numpy()
         else:
+            # 取出x轴小于0的所有的索引
             neg_indices = torch.nonzero(mesh.vertices[:, axis] < -1e-4, as_tuple=False)[:, 0].cpu().numpy()
+            # 取出x轴=0的所有的索引
             zero_indices = torch.nonzero(torch.abs(mesh.vertices[:, axis]) < 1e-4, as_tuple=False)[:, 0].cpu().numpy()
             
         pos_indices = []
+        # 对于所有的x轴小于0的索引
         for idx in neg_indices:
+            # 取出其坐标
             opposite_vtx = mesh.vertices[idx].clone()
+            # x轴取反对称到正半轴
             opposite_vtx[axis] *= -1
+            # 计算所有的点和x轴小于0关于yoz平面对称点的距离
             dists = (mesh.vertices - opposite_vtx).norm(dim=-1)
+            # 最小距离和最小索引
             minval, minidx = torch.min(dists, dim=0)
+            # 断言最小距离=0 (任何点关于yoz平面对称不会与另一个点重合)
             assert minval < 1e-4, minval
+            # 记录每个小于0的点的对侧点索引
             pos_indices.append(minidx.item())
+        # 断言对侧点数目=x轴负点数目
         assert len(pos_indices) == len(neg_indices)
+        # 断言对策点数目不重复
         assert len(pos_indices) == len(set(pos_indices)) # No duplicates
         pos_indices = np.array(pos_indices)
 
@@ -52,6 +64,7 @@ class MeshTemplate:
         zero_indices = torch.LongTensor(zero_indices).cuda()
         nonneg_indices = torch.LongTensor(list(pos_indices) + list(zero_indices)).cuda()
 
+        # 所有数目=对侧点数目+负点数目+零点数目
         total_count = len(pos_indices) + len(neg_indices) + len(zero_indices)
         assert total_count == len(mesh.vertices), (total_count, len(mesh.vertices))
 
@@ -60,6 +73,7 @@ class MeshTemplate:
         rings = 31 if '31rings' in mesh_path else 16
         print(f'The mesh has {rings} rings')
         print('-------------------------')
+        # 对于每一个
         for faces, vertices in zip(mesh.face_textures, mesh.faces):
             for face, vertex in zip(faces, vertices):
                 if vertex.item() not in index_list:
@@ -113,7 +127,9 @@ class MeshTemplate:
         """
         Deform this mesh template along its tangent map, using the provided vertex displacements.
         """
+        # tangent_map : precomputed rotation matrix
         tgm = self.nonneg_tangent_map if self.is_symmetric else self.tangent_map
+        # R@delta
         return (deltas.unsqueeze(-2) @ tgm.expand(deltas.shape[0], -1, -1, -1)).squeeze(-2)
 
     def compute_normals(self, vertex_positions):
@@ -151,6 +167,7 @@ class MeshTemplate:
             vtx_n2 = vtx_n.clone()
             vtx_n2[:, self.neg_indices] = vtx_n[:, self.pos_indices] * torch.Tensor([-1, 1, 1]).to(vtx_n.device)
             vertex_deltas = vtx_n2 * self.symmetry_mask
+        # v' = v+R@delta
         vertex_positions = self.mesh.vertices.unsqueeze(0) + vertex_deltas
         return vertex_positions
 

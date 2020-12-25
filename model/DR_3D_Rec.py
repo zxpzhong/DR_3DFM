@@ -75,19 +75,48 @@ class Img_Embedding_Model(nn.Module):
         '''
         初始化参数:
         '''
-        model = torchvision.models.resnet34(pretrained=True)
-        # remove last fully-connected layer
-        self.net = nn.Sequential(*list(model.children())[:-1])
+        self.conv1e = nn.Conv2d(4, 64, 5, stride=2, padding=2, bias=False) # 128 -> 64
+        self.bn1e = nn.BatchNorm2d(64)
+        self.conv2e = nn.Conv2d(64, 128, 3, stride=2, padding=1, bias=False) # 64 > 32
+        self.bn2e = nn.BatchNorm2d(128)
+        self.conv3e = nn.Conv2d(128, 256, 3, stride=2, padding=1, bias=False) # 32 -> 16
+        self.bn3e = nn.BatchNorm2d(256)
+        self.conv4e = nn.Conv2d(256, 512, 3, stride=2, padding=1, bias=False) # 16 -> 8
+        self.bn4e = nn.BatchNorm2d(512)
+        
+        bottleneck_dim = 256
+        self.conv5e = nn.Conv2d(512, 1024, 3, stride=2, padding=1, bias=False) # 8 -> 4
+        self.bn5e = nn.BatchNorm2d(1024)
+        self.fc1e = nn.Linear(1024, bottleneck_dim, bias=False)
+        self.bnfc1e = nn.BatchNorm1d(bottleneck_dim)
+            
+        self.fc3e = nn.Linear(bottleneck_dim, 1024, bias=False)
+        self.bnfc3e = nn.BatchNorm1d(1024)
+        self.relu = nn.ReLU(inplace=True)
+        
+        self.GAP = nn.AdaptiveAvgPool2d((1,1))
         pass
 
-    def forward(self, img):
+    def forward(self, x):
         '''
         输入: 单张图片 C*H*W
         输出: 该张图片的特征 dim
         '''
-        feature = self.net(img)
-        feature = feature.reshape([feature.shape[0],feature.shape[1]])
-        return feature
+        x = self.relu(self.bn1e(self.conv1e(x)))
+        x = self.relu(self.bn2e(self.conv2e(x)))
+        x = self.relu(self.bn3e(self.conv3e(x)))
+        x = self.relu(self.bn4e(self.conv4e(x)))
+        x = self.relu(self.bn5e(self.conv5e(x)))
+        
+        # x = x.view(x.shape[0], -1) # Flatten
+        # GAP
+        x = self.GAP(x)
+        x = x.view(x.size(0), -1)
+        
+        z = self.relu(self.bnfc1e(self.fc1e(x)))
+        # 隐编码
+        z = self.relu(self.bnfc3e(self.fc3e(z)))
+        return z
 
 class Mesh_Deform_Model(nn.Module):
     '''
@@ -163,9 +192,12 @@ class Renderer(nn.Module):
         # 预定义相机外参
         # 真实参数
         # 相机全部往中心移动
-        x = 0.597105
-        y = 1.062068
-        z = 1.111316
+        # x = 0.597105
+        # y = 1.062068
+        # z = 1.111316
+        x = 0
+        y = 0
+        z = 0
         self.cam_mat = np.array([
             [[ 0.57432211  ,0.77105488  ,0.27500633],
  [-0.56542476,  0.13069975 , 0.81437854],
@@ -222,6 +254,7 @@ class Renderer(nn.Module):
                                    uv_bxpx2=input_uvs,
                                    texture_bx3xthxtw=input_texture,
                                    ft_fx3=mesh_face_textures)
+            predictions = torch.cat((predictions, img_prob), dim=3).permute(0, 3, 1, 2)
             temp = predictions.detach().cpu().numpy()[0]
             # self.gif_writer.append_data((temp * 255).astype(np.uint8))
             images.append(predictions)
@@ -232,7 +265,7 @@ class Renderer(nn.Module):
 class DR_3D_Model(nn.Module):
     r"""Differential Render based 3D Finger Reconstruction Model
         """
-    def __init__(self,N = 6,f_dim=512, point_num = 1022 , num_classes=1,ref_path = 'data/cylinder_template_mesh/uvsphere_31rings.obj'):
+    def __init__(self,N = 6,f_dim=1024, point_num = 1022 , num_classes=1,ref_path = 'data/cylinder_template_mesh/uvsphere_31rings.obj'):
         super(DR_3D_Model, self).__init__()
         '''
         初始化参数:

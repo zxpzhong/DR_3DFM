@@ -94,6 +94,8 @@ class Train_Dataset(torch.utils.data.Dataset):
         mask5 = torch.where(torch.sum(img5,dim=0) > 0,torch.ones_like(torch.sum(img5,dim=0)) ,torch.zeros_like(torch.sum(img5,dim=0))).unsqueeze(-1)
         mask6 = torch.where(torch.sum(img6,dim=0) > 0,torch.ones_like(torch.sum(img6,dim=0)) ,torch.zeros_like(torch.sum(img6,dim=0))).unsqueeze(-1)
         mask = [mask1,mask2,mask3,mask4,mask5,mask6]
+        for i in range(len(img)):
+            img[i] = torch.cat([img[i],mask[i].permute(2,0,1)],dim=0)
         # print(path)
         return img,label,mask
 

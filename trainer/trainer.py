@@ -30,7 +30,7 @@ class Trainer(BaseTrainer):
         self.valid_data_loader = valid_data_loader
         self.do_validation = self.valid_data_loader is not None
         self.lr_scheduler = lr_scheduler
-        self.log_step = 4*int(np.sqrt(data_loader.batch_size))
+        self.log_step = 50*int(np.sqrt(data_loader.batch_size))
 
         self.train_metrics = MetricTracker('loss','loss_img','loss_mask','loss_edge','loss_flat','loss_lap', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
         self.valid_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
@@ -65,9 +65,9 @@ class Trainer(BaseTrainer):
                 # Lap平滑损失
                 # loss_lap += 0.001*Lap_Loss(self.model.adj,rec_mesh)
                 # 边长损失
-                # loss_edge += 0.1*Edge_regularization(rec_mesh,mesh.faces.long())
+                loss_edge += 0.1*Edge_regularization(rec_mesh,mesh.faces.long())
                 # 法向损失
-                # loss_flat += 0.001*Loss_flat(rec_mesh,mesh)
+                loss_flat += 0.0001*Loss_flat(rec_mesh,mesh)
                 
             loss = loss_img+loss_mask+loss_lap+loss_edge+loss_flat
             loss/=VIEW_NUMS
@@ -102,7 +102,7 @@ class Trainer(BaseTrainer):
                     loss.item()))
                 # 保存为三维模型, point写入obj文件, face固定的, uv坐标值
                 save_mesh(rec_mesh[0].cpu().detach(),mesh.faces.long().cpu().detach(),os.path.join(self.config.log_dir,'{}_{}_{}.stl'.format(epoch,batch_idx,step)))
-                
+                # exit()
             if batch_idx == self.len_epoch:
                 break
         log = self.train_metrics.result()

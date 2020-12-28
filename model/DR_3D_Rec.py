@@ -1,3 +1,4 @@
+from numpy.matrixlib.defmatrix import matrix
 from torch import embedding
 import torch
 import torch.nn as nn
@@ -26,6 +27,29 @@ from model.gprojection import GProjection
 # convmesh部分
 from model.reconstruction import ReconstructionNetwork
 from .mesh_template import MeshTemplate
+
+# 相机变换
+import copy
+def eulerAnglesToRotationMatrix(angles1) :
+    theta = np.zeros((3, 1), dtype=np.float64)
+    theta[0] = angles1[0]*3.141592653589793/180.0
+    theta[1] = angles1[1]*3.141592653589793/180.0
+    theta[2] = angles1[2]*3.141592653589793/180.0
+    R_x = np.array([[1,         0,                  0                   ],
+                    [0,         math.cos(theta[0]), -math.sin(theta[0]) ],
+                    [0,         math.sin(theta[0]), math.cos(theta[0])  ]
+                    ])
+    R_y = np.array([[math.cos(theta[1]),    0,      math.sin(theta[1])  ],
+                    [0,                     1,      0                   ],
+                    [-math.sin(theta[1]),   0,      math.cos(theta[1])  ]
+                    ])
+    R_z = np.array([[math.cos(theta[2]),    -math.sin(theta[2]),    0],
+                    [math.sin(theta[2]),    math.cos(theta[2]),     0],
+                    [0,                     0,                      1]
+                    ])
+    R = np.dot(R_z, np.dot( R_y, R_x ))
+    return R
+R = eulerAnglesToRotationMatrix([35,20,-30])
 
 def isRotationMatrix(R) :
     Rt = np.transpose(R)
@@ -195,6 +219,9 @@ class Renderer(nn.Module):
         # x = 0.597105
         # y = 1.062068
         # z = 1.111316
+        # x = -0.3
+        # y = 1.2
+        # z = 0.1
         x = 0
         y = 0
         z = 0
@@ -218,6 +245,8 @@ class Renderer(nn.Module):
  [-0.69422699 , 0.71968522, -0.01010355],
  [-0.10318619 ,-0.085624  ,  0.99096979]]
         ])
+        for i in range(6):
+            self.cam_mat[i] = self.cam_mat[i]@R
         self.cam_mat = torch.FloatTensor(self.cam_mat)
         self.cameras_coordinate = [[2.50436065+x, -3.75589484+y, 1.88800446+z],
                             [4.02581981+x, -2.56894275+y, -3.29281609+z],
@@ -225,6 +254,14 @@ class Renderer(nn.Module):
                             [-2.45261002+x, 3.5962286+y, -1.87506165+z],
                             [-3.12155638+x, 2.09254542+y, 2.21770186+z],
                             [-1.07692383+x, -1.37631717+y, 4.3081322+z]]
+        xx = -0.3
+        yy = 1.2
+        zz = 0.1
+        for i in range(6):
+            self.cameras_coordinate[i] = np.array(self.cameras_coordinate[i])@R
+            self.cameras_coordinate[i][0]+=xx
+            self.cameras_coordinate[i][1]+=yy
+            self.cameras_coordinate[i][2]+=zz
         self.cameras_coordinate = torch.FloatTensor(self.cameras_coordinate)
         if torch.cuda.is_available():
             self.cam_mat = torch.FloatTensor(self.cam_mat).cuda()
@@ -265,7 +302,7 @@ class Renderer(nn.Module):
 class DR_3D_Model(nn.Module):
     r"""Differential Render based 3D Finger Reconstruction Model
         """
-    def __init__(self,N = 6,f_dim=1024, point_num = 1022 , num_classes=1,ref_path = 'data/cylinder_template_mesh/uvsphere_31rings.obj'):
+    def __init__(self,N = 6,f_dim=1024, point_num = 1022 , num_classes=1,ref_path = 'data/cylinder_template_mesh/1.obj'):
         super(DR_3D_Model, self).__init__()
         '''
         初始化参数:
@@ -299,7 +336,7 @@ class DR_3D_Model(nn.Module):
         
         # 三维形变网络
         self.mesh_deform_model = ReconstructionNetwork(symmetric=False,
-                                  texture_res=128,
+                                  texture_res=256,
                                   mesh_res=32,
                                  )
         

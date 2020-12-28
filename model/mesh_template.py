@@ -55,7 +55,7 @@ class MeshTemplate:
             pos_indices.append(minidx.item())
         # 断言对侧点数目=x轴负点数目
         assert len(pos_indices) == len(neg_indices)
-        # 断言对策点数目不重复
+        # 断言对侧点数目不重复
         assert len(pos_indices) == len(set(pos_indices)) # No duplicates
         pos_indices = np.array(pos_indices)
 
@@ -73,21 +73,33 @@ class MeshTemplate:
         rings = 31 if '31rings' in mesh_path else 16
         print(f'The mesh has {rings} rings')
         print('-------------------------')
-        # 对于每一个
+        # mesh.face_textures : 三角面片uv值
+        # mesh.face : 三角面片顶点序号
+        # 对于每一个三角面片
         for faces, vertices in zip(mesh.face_textures, mesh.faces):
+            # 对于三角面片中的每一个顶点的uv值和顶点
             for face, vertex in zip(faces, vertices):
+                # 如果当前顶点没有被访问过，那么对该顶点序号创建空列表
                 if vertex.item() not in index_list:
                     index_list[vertex.item()] = []
+                # 该三角面片的u值乘段数，v值乘环数（一共32个段，31个环）
                 res = mesh.uvs[face].cpu().numpy() * [segments, rings]
+                # 判断浮点数是否相等，u值乘段数是否等于段数 -》 u值为1？
                 if math.isclose(res[0], segments, abs_tol=1e-4):
+                    # u值如果为1，那么直接变为0，1的话超过边界了
                     res[0] = 0 # Wrap around
+                # 该顶点的u值乘段数，v值乘环数，被append进该顶点的index_list
                 index_list[vertex.item()].append(res)
 
         topo_map = torch.zeros(mesh.vertices.shape[0], 2)
+        # index_list 长度 962的哈希表，每个位置存储的是一个长度为6的列表(每个顶点有且仅有6个面共有)，每个列表储存的都是该三角形的u值乘段数，v值乘环数
         for idx, data in index_list.items():
+            # 对六个面的u值乘段数，v值乘环数求平均后分别再除段数和环数
             avg = np.mean(np.array(data, dtype=np.float32), axis=0) / [segments, rings]
+            # 记录第idx个顶点的avg
             topo_map[idx] = torch.Tensor(avg)
-
+        # 看论文图中可知，圆的拓扑构成为经纬线（即代码中的段和环），段和环的索引就是uv值（空间坐标和uv值一一对应），段和环的索引也可以直接被当成法向
+        # 如果手动求法向，是不是就不需要了段和环的约束了？？？当然还要考虑固定uv情况下的分布尽可能均匀
         # Flip topo map
         topo_map = topo_map * 2 - 1
         topo_map = topo_map * torch.FloatTensor([1, -1]).to(topo_map.device)
@@ -100,15 +112,18 @@ class MeshTemplate:
 
         # Compute mesh tangent map (per-vertex normals, tangents, and bitangents)
         mesh_normals = F.normalize(mesh.vertices, dim=1)
+        # y方向单位向量
         up_vector = torch.Tensor([[0, 1, 0]]).to(mesh_normals.device).expand_as(mesh_normals)
+        # 垂直y轴的（纬线切向）
         mesh_tangents = F.normalize(torch.cross(mesh_normals, up_vector, dim=1), dim=1)
+        # 经线切向
         mesh_bitangents = torch.cross(mesh_normals, mesh_tangents, dim=1)
         # North pole and south pole have no (bi)tangent
         mesh_tangents[poles[0]] = 0
         mesh_bitangents[poles[0]] = 0
         mesh_tangents[poles[1]] = 0
         mesh_bitangents[poles[1]] = 0
-        
+        # 切向图为 法向，切向，垂直切向三者堆叠（恰好构成一个笛卡尔系）
         tangent_map = torch.stack((mesh_normals, mesh_tangents, mesh_bitangents), dim=1).cuda()
         nonneg_tangent_map = tangent_map[nonneg_indices] # For symmetric meshes
         
@@ -130,6 +145,8 @@ class MeshTemplate:
         # tangent_map : precomputed rotation matrix
         tgm = self.nonneg_tangent_map if self.is_symmetric else self.tangent_map
         # R@delta
+        # tgm中每个点的三列分别表示xyz坐标轴(表示旋转),即生成的位移量是在每个顶点的切平面坐标系中运动,而不是在全局坐标系中
+        # 右乘,是相对于自身运动,将运动量变换到自己的切平面坐标系中(长度不变,只变方向)
         return (deltas.unsqueeze(-2) @ tgm.expand(deltas.shape[0], -1, -1, -1)).squeeze(-2)
 
     def compute_normals(self, vertex_positions):
@@ -150,6 +167,7 @@ class MeshTemplate:
         Output: 3D vertex positions in object space.
         """
         topo = self.nonneg_topo_map if self.is_symmetric else self.topo_map
+        # displacement_map : bs*3*W*H (W=H)
         _, displacement_map_padded = self.adjust_uv_and_texture(displacement_map)
         if self.is_symmetric:
             # Compensate for even symmetry in UV map
@@ -158,7 +176,10 @@ class MeshTemplate:
             topo = topo.clone()
             topo[:, 0] = (topo[:, 0] + 1 + 2*delta - expansion)/expansion # Only for x axis
         topo_expanded = topo.unsqueeze(0).unsqueeze(-2).expand(displacement_map.shape[0], -1, -1, -1)
+        # 在displacement map上采样得到离散坐标（顶点沿其切向的运动量）
+        # topo_expanded : bs*962*1*2(962个顶点，每个顶点两个参数uv值)
         vertex_deltas_local = grid_sample_bilinear(displacement_map_padded, topo_expanded).squeeze(-1).permute(0, 2, 1)
+        # vertex_deltas_local：4*962*3 bs*点数*3(在局部的坐标系内的位移量)
         vertex_deltas = self.deform(vertex_deltas_local)
         if self.is_symmetric:
             # Symmetrize

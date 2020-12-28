@@ -7,5 +7,5 @@ outer_files/
 *.stl
 *.png
 *.gif
-*.obj
+# *.obj
 1.png

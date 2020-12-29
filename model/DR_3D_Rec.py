@@ -302,7 +302,7 @@ class Renderer(nn.Module):
 class DR_3D_Model(nn.Module):
     r"""Differential Render based 3D Finger Reconstruction Model
         """
-    def __init__(self,N = 6,f_dim=1024, point_num = 1022 , num_classes=1,ref_path = 'data/cylinder_template_mesh/1.obj'):
+    def __init__(self,N = 6,f_dim=1024, point_num = 962 , num_classes=1,ref_path = 'data/cylinder_template_mesh/uvsphere_31rings_.obj'):
         super(DR_3D_Model, self).__init__()
         '''
         初始化参数:
@@ -322,11 +322,11 @@ class DR_3D_Model(nn.Module):
         for i in range(self.meshtemp.mesh.faces.shape[0]):
             a,b,c = self.meshtemp.mesh.faces[i]
             self.adj[a,b] = 1
-            self.adj[b,a] = 1
+            # self.adj[b,a] = 1
             self.adj[a,c] = 1
-            self.adj[c,a] = 1
+            # self.adj[c,a] = 1
             self.adj[b,c] = 1
-            self.adj[c,b] = 1
+            # self.adj[c,b] = 1
             
         if torch.cuda.is_available():
             self.adj = self.adj.cuda()

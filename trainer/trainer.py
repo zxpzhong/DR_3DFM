@@ -61,11 +61,11 @@ class Trainer(BaseTrainer):
                 loss_img += L1(img, data[i])
                 # 轮廓mask IOU L1/L2
                 # loss += L1(torch.where(img > 0,torch.ones_like(img) ,torch.zeros_like(img)) , torch.where(data[i] > 0,torch.ones_like(img) ,torch.zeros_like(img)) )
-                # loss_mask += L1(img_probs[i],mask[i])
+                loss_mask += L1(img_probs[i],mask[i])
                 # Lap平滑损失
                 # loss_lap += 0.001*Lap_Loss(self.model.adj,rec_mesh)
                 # 边长损失
-                loss_edge += 0.1*Edge_regularization(rec_mesh,mesh.faces.long())
+                # loss_edge += 1*Edge_regularization(rec_mesh,mesh.faces.long())
                 # 法向损失
                 loss_flat += 0.0001*Loss_flat(rec_mesh,mesh)
                 

@@ -70,4 +70,5 @@ def Edge_regularization(pred, edges):
     :return:
     """
     l2_loss = nn.MSELoss(reduction='mean')
-    return l2_loss(pred[:, edges[:, 0]], pred[:, edges[:, 1]]) * pred.size(-1)
+    temp = pred[:, edges[:, 0]] - pred[:, edges[:, 1]]
+    return l2_loss(temp,torch.zeros_like(temp).cuda()) * pred.size(-1)

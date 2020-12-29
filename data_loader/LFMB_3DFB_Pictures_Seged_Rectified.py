@@ -8,10 +8,18 @@ import torch
 import pandas as pd
 from torchvision import transforms as T
 from PIL import Image
-
+import numpy as np
 
 from torchvision import datasets, transforms
 from base import BaseDataLoader
+
+def img_open(path):
+    img = Image.open(path)
+    array = np.array(img)
+    array[:,:100,:] = 0
+    array[:,-100:,:] = 0
+    img = Image.fromarray(array, mode='RGB')
+    return img
 
 
 class LFMB_3DFB_Pictures_Seged_Rectified(BaseDataLoader):
@@ -65,22 +73,22 @@ class Train_Dataset(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         path = self.root+self.prefixs[index]
-        img1 = Image.open(path+"_A.bmp")
+        img1 = img_open(path+"_A.bmp")
         img1 = transform_notrans(img1)
         # img1 = torch.cat([img1, img1, img1], 0)
-        img2 = Image.open(path+"_B.bmp")
+        img2 = img_open(path+"_B.bmp")
         img2 = transform_notrans(img2)
         # img2 = torch.cat([img2, img2, img2], 0)
-        img3 = Image.open(path+"_C.bmp")
+        img3 = img_open(path+"_C.bmp")
         img3 = transform_notrans(img3)
         # img3 = torch.cat([img3, img3, img3], 0)
-        img4 = Image.open(path+"_D.bmp")
+        img4 = img_open(path+"_D.bmp")
         img4 = transform_notrans(img4)
         # img4 = torch.cat([img4, img4, img4], 0)
-        img5 = Image.open(path+"_E.bmp")
+        img5 = img_open(path+"_E.bmp")
         img5 = transform_notrans(img5)
         # img5 = torch.cat([img5, img5, img5], 0)
-        img6 = Image.open(path+"_F.bmp")
+        img6 = img_open(path+"_F.bmp")
         img6 = transform_notrans(img6)
         # img6 = torch.cat([img6, img6, img6], 0)
 
@@ -115,22 +123,22 @@ class Test_Dataset(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         path = self.root + self.prefixs[index]
-        img1 = Image.open(path+"_A.bmp")
+        img1 = img_open(path+"_A.bmp")
         img1 = transform_notrans(img1)
         # img1 = torch.cat([img1, img1, img1], 0)
-        img2 = Image.open(path+"_B.bmp")
+        img2 = img_open(path+"_B.bmp")
         img2 = transform_notrans(img2)
         # img2 = torch.cat([img2, img2, img2], 0)
-        img3 = Image.open(path+"_C.bmp")
+        img3 = img_open(path+"_C.bmp")
         img3 = transform_notrans(img3)
         # img3 = torch.cat([img3, img3, img3], 0)
-        img4 = Image.open(path+"_D.bmp")
+        img4 = img_open(path+"_D.bmp")
         img4 = transform_notrans(img4)
         # img4 = torch.cat([img4, img4, img4], 0)
-        img5 = Image.open(path+"_E.bmp")
+        img5 = img_open(path+"_E.bmp")
         img5 = transform_notrans(img5)
         # img5 = torch.cat([img5, img5, img5], 0)
-        img6 = Image.open(path+"_F.bmp")
+        img6 = img_open(path+"_F.bmp")
         img6 = transform_notrans(img6)
         # img6 = torch.cat([img6, img6, img6], 0)
 

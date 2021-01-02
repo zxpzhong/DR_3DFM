@@ -49,7 +49,7 @@ class Trainer(BaseTrainer):
             data, target = [item.to(self.device) for item in data], target.to(self.device)
             mask = [item.to(self.device) for item in mask]
             self.optimizer.zero_grad()
-            output,rec_mesh,img_probs,mesh = self.model(data)
+            output,rec_mesh,img_probs,mesh,rgb = self.model(data)
             loss_img = 0
             loss_mask = 0
             loss_lap = 0
@@ -67,7 +67,7 @@ class Trainer(BaseTrainer):
                 # 边长损失
                 # loss_edge += 1*Edge_regularization(rec_mesh,mesh.faces.long())
                 # 法向损失
-                loss_flat += 0.0001*Loss_flat(rec_mesh,mesh)
+                # loss_flat += 0.0001*Loss_flat(rec_mesh,mesh)
                 
             loss = loss_img+loss_mask+loss_lap+loss_edge+loss_flat
             loss/=VIEW_NUMS
@@ -101,7 +101,7 @@ class Trainer(BaseTrainer):
                     self._progress(batch_idx),
                     loss.item()))
                 # 保存为三维模型, point写入obj文件, face固定的, uv坐标值
-                save_mesh(rec_mesh[0].cpu().detach(),mesh.faces.long().cpu().detach(),os.path.join(self.config.log_dir,'{}_{}_{}.stl'.format(epoch,batch_idx,step)))
+                save_mesh(rec_mesh[0].cpu().detach(),mesh.faces.long().cpu().detach(),rgb[0].cpu().detach(),os.path.join(self.config.log_dir,'{}_{}_{}.obj'.format(epoch,batch_idx,step)))
                 # exit()
             if batch_idx == self.len_epoch:
                 break

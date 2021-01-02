@@ -40,7 +40,7 @@ class GConv(nn.Module):
             ret = output + self.bias
         else:
             ret = output
-        return ret
+        return ret,None
 
     def __repr__(self):
         return self.__class__.__name__ + ' (' \

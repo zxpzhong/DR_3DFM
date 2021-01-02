@@ -213,21 +213,21 @@ class MeshTemplate:
             
         return uvs, texture
     
-    def forward_renderer(self, vertex_positions, texture, num_gpus=1, **kwargs):
+    def forward_renderer(self, vertex_positions, num_gpus=1, **kwargs):
         mesh_faces = self.mesh.faces
         mesh_face_textures = self.mesh.face_textures
         if num_gpus > 1:
             mesh_faces = mesh_faces.repeat(num_gpus, 1)
             mesh_face_textures = mesh_face_textures.repeat(num_gpus, 1)
 
-        input_uvs, input_texture = self.adjust_uv_and_texture(texture)
+        # input_uvs, input_texture = self.adjust_uv_and_texture(texture)
 
         # image, alpha, _ = renderer(points=[vertex_positions, mesh_faces],
         #                            uv_bxpx2=input_uvs,
         #                            texture_bx3xthxtw=input_texture,
         #                            ft_fx3=mesh_face_textures,
         #                            **kwargs)
-        return vertex_positions,mesh_faces,input_uvs,input_texture,mesh_face_textures
+        return vertex_positions,mesh_faces,mesh_face_textures
     
     def export_obj(self, path_prefix, vertex_positions, texture):
         assert len(vertex_positions.shape) == 2

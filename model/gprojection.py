@@ -90,7 +90,8 @@ class GProjection(nn.Module):
             w = torch.clamp(w, min=-1, max=1)
             h = torch.clamp(h, min=-1, max=1)
 
-        feats = [inputs]
+        # feats = [inputs]
+        feats = []
         for img_feature in img_features:
             feats.append(self.project(resolution, img_feature, torch.stack([w, h], dim=-1)))
 
@@ -116,3 +117,5 @@ class GProjection(nn.Module):
             output = torch.transpose(output.squeeze(2), 1, 2)
 
         return output
+
+

@@ -26,7 +26,7 @@ from model.gprojection import GProjection
 
 # convmesh部分
 # from model.reconstruction import ReconstructionNetwork
-from .mesh_template import MeshTemplate
+from .mesh_template import MeshTemplate,MyMeshTemplate
 
 
 class Mesh_Deform_Model(nn.Module):
@@ -102,8 +102,8 @@ def eulerAnglesToRotationMatrix(angles1) :
                     ])
     R = np.dot(R_z, np.dot( R_y, R_x ))
     return R
-R = eulerAnglesToRotationMatrix([35,20,-30])
-
+# R = eulerAnglesToRotationMatrix([35,20,-30])
+R = eulerAnglesToRotationMatrix([0,0,0])
 def isRotationMatrix(R) :
     Rt = np.transpose(R)
     shouldBeIdentity = np.dot(Rt, R)
@@ -337,9 +337,12 @@ class Renderer(nn.Module):
                             [-2.45261002+x, 3.5962286+y, -1.87506165+z],
                             [-3.12155638+x, 2.09254542+y, 2.21770186+z],
                             [-1.07692383+x, -1.37631717+y, 4.3081322+z]]
-        xx = -0.3
-        yy = 1.2
-        zz = 0.1
+        # xx = -0.3
+        # yy = 1.2
+        # zz = 0.1
+        xx = 0
+        yy = 0
+        zz = 0
         for i in range(6):
             self.cameras_coordinate[i] = np.array(self.cameras_coordinate[i])@R
             self.cameras_coordinate[i][0]+=xx
@@ -386,7 +389,7 @@ class Renderer(nn.Module):
 class DR_3D_Model(nn.Module):
     r"""Differential Render based 3D Finger Reconstruction Model
         """
-    def __init__(self,N = 6,f_dim=512, point_num = 962 , num_classes=1,ref_path = 'data/cylinder_template_mesh/uvsphere_31rings.obj'):
+    def __init__(self,N = 6,f_dim=512, point_num = 10064 , num_classes=1,ref_path = '/home/zf/vscode/3d/DR_3DFM/data/cylinder_template_mesh/cylinder10064.obj'):
         super(DR_3D_Model, self).__init__()
         '''
         初始化参数:
@@ -398,7 +401,8 @@ class DR_3D_Model(nn.Module):
         # 参考mesh
         # 添加参考mesh信息
         # mesh = TriangleMesh.from_obj(ref_path)
-        self.meshtemp = MeshTemplate(ref_path, is_symmetric=False)
+        # self.meshtemp = MeshTemplate(ref_path, is_symmetric=False)
+        self.meshtemp = MyMeshTemplate(ref_path, is_symmetric=False)
         # # 构造adj mat
         self.adj = torch.zeros([self.point_num,self.point_num])
         

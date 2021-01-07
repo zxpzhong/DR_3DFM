@@ -247,16 +247,8 @@ class Mesh_Deform_Model(nn.Module):
             adj_mat=self.adj)
         self.deform = GConv(in_features=963, out_features=self.coord_dim,
                     adj_mat=self.adj)
-        # self.deform = GBottleneck(6, self.f_dim*6+3, self.hidden_dim, self.coord_dim,self.adj, activation=self.gconv_activation)
-        # self.deform_rgb = GBottleneck(6, self.f_dim*6+3, self.hidden_dim, self.coord_dim,self.adj, activation=self.gconv_activation)
-        # nn.ModuleList([
-        # GBottleneck(6, self.features_dim, self.hidden_dim, self.coord_dim,
-        #             self.adj, activation=self.gconv_activation),
-        # GBottleneck(6, self.features_dim, self.hidden_dim, self.coord_dim,
-        #             self.adj, activation=self.gconv_activation),
-        # GBottleneck(6, self.features_dim, self.hidden_dim, self.last_hidden_dim,
-        #             self.adj, activation=self.gconv_activation)
-        # ])
+        # self.deform = GBottleneck(1, 963, self.hidden_dim, self.coord_dim,self.adj, activation=self.gconv_activation)
+        # self.deform_rgb = GBottleneck(1, 963, self.hidden_dim, self.coord_dim,self.adj, activation=self.gconv_activation)
         pass
 
     def forward(self,embeddings,ref):
@@ -267,12 +259,12 @@ class Mesh_Deform_Model(nn.Module):
         # 初始参考坐标ref串联给每个点
         d = torch.cat([embeddings,ref.repeat(embeddings.shape[0],1,1)],dim=2)
         # 隐藏特征可以丢弃
-        temp,_ = self.deform(d)
-        points_move = F.tanh(temp)
+        points_move,_ = self.deform(d)
+        points_move = F.tanh(points_move)
         # points_move = points_move.reshape([points_move.shape[0],self.point_num,3])
         
-        temp2,_ = self.deform_rgb(d)
-        rgb = F.sigmoid(temp2)
+        rgb,_ = self.deform_rgb(d)
+        rgb = F.sigmoid(rgb)
         # rgb = rgb.reshape([rgb.shape[0],self.point_num,3])
         
         # points_move = self.fc(features_cat)
@@ -389,7 +381,7 @@ class Renderer(nn.Module):
 class DR_3D_Model(nn.Module):
     r"""Differential Render based 3D Finger Reconstruction Model
         """
-    def __init__(self,N = 6,f_dim=512, point_num = 10064 , num_classes=1,ref_path = '/home/zf/vscode/3d/DR_3DFM/data/cylinder_template_mesh/cylinder10064.obj'):
+    def __init__(self,N = 6,f_dim=512, point_num = 2562 , num_classes=1,ref_path = '/home/zf/vscode/3d/DR_3DFM/data/cylinder_template_mesh/icosphere2562.obj'):
         super(DR_3D_Model, self).__init__()
         '''
         初始化参数:
@@ -403,6 +395,7 @@ class DR_3D_Model(nn.Module):
         # mesh = TriangleMesh.from_obj(ref_path)
         # self.meshtemp = MeshTemplate(ref_path, is_symmetric=False)
         self.meshtemp = MyMeshTemplate(ref_path, is_symmetric=False)
+        self.mesh_trans = MyMeshTemplate('/home/zf/vscode/3d/DR_3DFM/data/cylinder_template_mesh/cylinder2602.obj', is_symmetric=False)
         # # 构造adj mat
         self.adj = torch.zeros([self.point_num,self.point_num])
         
@@ -472,7 +465,9 @@ class DR_3D_Model(nn.Module):
         # 将特征输入解码器,得到displacement map和uv map
         points_move,rgb = self.mesh_deform_model(feature_per_point,self.meshtemp.mesh.vertices)
         rec_mesh = points_move+self.meshtemp.mesh.vertices.repeat(points_move.shape[0],1,1)
+        # rec_mesh = points_move
         # 渲染
         vertex_positions,mesh_faces,mesh_face_textures = self.meshtemp.forward_renderer(rec_mesh)
         repro_imgs,img_probs = self.renderer(vertex_positions,mesh_faces,mesh_face_textures,rgb)
-        return repro_imgs,rec_mesh,img_probs,self.meshtemp.mesh,rgb
+        self.mesh_trans.mesh.vertices = rec_mesh
+        return repro_imgs,rec_mesh,img_probs,self.meshtemp.mesh,rgb,self.mesh_trans.mesh

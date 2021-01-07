@@ -16,8 +16,8 @@ from base import BaseDataLoader
 def img_open(path):
     img = Image.open(path)
     array = np.array(img)
-    array[:,:100,:] = 0
-    array[:,-100:,:] = 0
+    # array[:,:20,:] = 0
+    # array[:,-20:,:] = 0
     img = Image.fromarray(array, mode='RGB')
     return img
 

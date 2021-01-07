@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from tqdm import tqdm
 from loss.loss import L1,L2,Lap_Loss,CE,Edge_regularization,Loss_flat
 import os
+import kaolin as kal
 
 VIEW_NUMS = 6
 
@@ -32,7 +33,7 @@ class Trainer(BaseTrainer):
         self.lr_scheduler = lr_scheduler
         self.log_step = 50*int(np.sqrt(data_loader.batch_size))
 
-        self.train_metrics = MetricTracker('loss','loss_img','loss_mask','loss_edge','loss_flat','loss_lap', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
+        self.train_metrics = MetricTracker('loss','loss_img','loss_mask','loss_edge','loss_flat','loss_lap','loss_cd', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
         self.valid_metrics = MetricTracker('loss', *[m.__name__ for m in self.metric_ftns], writer=self.writer)
 
     def _train_epoch(self, epoch):
@@ -49,12 +50,13 @@ class Trainer(BaseTrainer):
             data, target = [item.to(self.device) for item in data], target.to(self.device)
             mask = [item.to(self.device) for item in mask]
             self.optimizer.zero_grad()
-            output,rec_mesh,img_probs,mesh,rgb = self.model(data)
+            output,rec_mesh,img_probs,mesh,rgb,mesh_trans = self.model(data)
             loss_img = 0
             loss_mask = 0
             loss_lap = 0
             loss_edge = 0
             loss_flat = 0
+            loss_cd = 0
             for i in range(VIEW_NUMS):
                 img = output[i]
                 # colored image L1 loss
@@ -62,15 +64,21 @@ class Trainer(BaseTrainer):
                 # 轮廓mask IOU L1/L2
                 # loss += L1(torch.where(img > 0,torch.ones_like(img) ,torch.zeros_like(img)) , torch.where(data[i] > 0,torch.ones_like(img) ,torch.zeros_like(img)) )
                 loss_mask += L1(img_probs[i],mask[i])
-                # Lap平滑损失
-                # loss_lap += 0.001*Lap_Loss(self.model.adj,rec_mesh)
-                # 边长损失
-                loss_edge += 1*Edge_regularization(rec_mesh,mesh.faces.long())
-                # 法向损失
-                # loss_flat += 0.0001*Loss_flat(rec_mesh,mesh)
-                
-            loss = loss_img+loss_mask+loss_lap+loss_edge+loss_flat
-            loss/=VIEW_NUMS
+            # Lap平滑损失
+            # loss_lap += 0.001*Lap_Loss(self.model.adj,rec_mesh)
+            # 边长损失
+            # loss_edge += 1*Edge_regularization(rec_mesh,mesh.faces.long())
+            loss_edge += kal.metrics.mesh.edge_length(mesh)
+            # 法向损失
+            # loss_flat += 0.0001*Loss_flat(rec_mesh,mesh)
+            # CD损失
+            # for i in range(rec_mesh.shape[0]):
+            #     # 生成物体和参考圆柱之间的CD损失
+            #     loss_cd += kal.metrics.point.chamfer_distance(mesh_trans.vertices,rec_mesh[i])
+            loss_mask/=VIEW_NUMS
+            loss_img/=VIEW_NUMS
+            loss_cd/=VIEW_NUMS
+            loss = loss_img+loss_mask+loss_lap+loss_edge+loss_flat+loss_cd
             loss.backward()
             self.optimizer.step()
             # log
@@ -84,6 +92,7 @@ class Trainer(BaseTrainer):
                 if type(loss_lap) == type(loss): self.train_metrics.update('loss_lap', loss_lap.item())
                 if type(loss_edge) == type(loss): self.train_metrics.update('loss_edge', loss_edge.item())
                 if type(loss_flat) == type(loss): self.train_metrics.update('loss_flat', loss_flat.item())
+                if type(loss_cd) == type(loss): self.train_metrics.update('loss_cd', loss_cd.item())
                 self.train_metrics.update('loss', loss.item())
                 # 合成两张图像
                 shape = data[0].shape

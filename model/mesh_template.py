@@ -9,7 +9,7 @@ from .utils import grid_sample_bilinear, circpad
 
 from packaging import version
 
-class MyMeshTemplate:
+class MyMeshTemplate():
     
     def __init__(self, mesh_path, is_symmetric=True):
         self.mesh = kal.rep.TriangleMesh.from_obj(mesh_path, enable_adjacency=True)

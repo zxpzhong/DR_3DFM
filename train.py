@@ -18,7 +18,7 @@ torch.backends.cudnn.benchmark = False
 np.random.seed(SEED)
 
 def main(config):
-    os.environ["CUDA_VISIBLE_DEVICES"] = config['n_gpu']
+    
     logger = config.get_logger('train')
     # setup data_loader instances
     data_loader = config.init_obj('data_loader', module_data)
@@ -63,4 +63,5 @@ if __name__ == '__main__':
         CustomArgs(['--bs', '--batch_size'], type=int, target='data_loader;args;batch_size')
     ]
     config = ConfigParser.from_args(args, options)
+    os.environ["CUDA_VISIBLE_DEVICES"] = config['n_gpu']
     main(config)

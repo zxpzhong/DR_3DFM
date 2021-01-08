@@ -28,6 +28,9 @@ from model.gprojection import GProjection
 # from model.reconstruction import ReconstructionNetwork
 from .mesh_template import MeshTemplate,MyMeshTemplate
 
+# pytorch_geomtry
+import torch_geometric.transforms as T
+from torch_geometric.nn import GCNConv, ChebConv  # noqa
 
 # 相机变换
 import copy
@@ -178,7 +181,7 @@ class Mesh_Deform_Model(nn.Module):
     '''
     N视角的特征提取器
     '''
-    def __init__(self,adj, N = 6,f_dim=512, point_num = 1024):
+    def __init__(self, N = 6,f_dim=512, point_num = 1024):
         super(Mesh_Deform_Model, self).__init__()
         '''
         初始化参数:
@@ -186,57 +189,45 @@ class Mesh_Deform_Model(nn.Module):
         self.N = N
         self.f_dim = f_dim
         self.point_num = point_num
-        self.adj = adj
         # self.deform = nn.Linear(N*f_dim,point_num*3)
         self.hidden_dim = 192
         self.last_hidden_dim = 192
         self.gconv_activation = True
         self.coord_dim = 3
         
+        normalize = True
         
-        # self.deform_rgb = GConv(in_features=963, out_features=self.coord_dim,
-        #     adj_mat=self.adj)
-        # self.deform = GConv(in_features=963, out_features=self.coord_dim,
-        #             adj_mat=self.adj)
         
-        # self.deform = GBottleneck(1, 963, self.hidden_dim, self.coord_dim,self.adj, activation=self.gconv_activation)
-        # self.deform_rgb = GBottleneck(1, 963, self.hidden_dim, self.coord_dim,self.adj, activation=self.gconv_activation)
-        resblock_layers = []
-        resblock_layers.append(GConv(in_features=963, out_features=self.hidden_dim, adj_mat=self.adj))
-        resblock_layers += [
-            GResBlock(in_dim=963, hidden_dim=self.hidden_dim, adj_mat=self.adj, activation=self.gconv_activation)
-                           for _ in range(1)]
-        resblock_layers.append(GResBlock(in_dim=self.hidden_dim, hidden_dim=self.coord_dim, adj_mat=self.adj, activation=self.gconv_activation))
-        self.deform_rgb = nn.Sequential(*resblock_layers)
+        self.deform_rgb1 = GCNConv(963, 512, cached=True, normalize=normalize)
+        self.deform_rgb2 = GCNConv(512, 128, cached=True, normalize=normalize)
+        self.deform_rgb3 = GCNConv(128, 32, cached=True, normalize=normalize)
+        self.deform_rgb4 = GCNConv(32, 3, cached=True, normalize=normalize)
         
-        resblock_layers = []
-        resblock_layers.append(GConv(in_features=963, out_features=self.hidden_dim, adj_mat=self.adj))
-        resblock_layers += [
-            GResBlock(in_dim=self.hidden_dim, hidden_dim=self.hidden_dim, adj_mat=self.adj, activation=self.gconv_activation)
-                           for _ in range(1)]
-        resblock_layers.append(GResBlock(in_dim=self.hidden_dim, hidden_dim=self.coord_dim, adj_mat=self.adj, activation=self.gconv_activation))
-        self.deform = nn.Sequential(*resblock_layers)
-        
+        self.deform1 = GCNConv(963, 512, cached=True, normalize=normalize)
+        self.deform2 = GCNConv(512, 128, cached=True, normalize=normalize)
+        self.deform3 = GCNConv(128, 32, cached=True, normalize=normalize)
+        self.deform4 = GCNConv(32, 3, cached=True, normalize=normalize)
         pass
 
-    def forward(self,embeddings,ref):
+    def forward(self,embeddings,ref,adj):
         '''
         输入: N个视角下的特征 N list dim
         输出: N个视角融合出来的三维mesh形变量 : 顶点数*3
         '''
         # 初始参考坐标ref串联给每个点
-        d = torch.cat([embeddings,ref.repeat(embeddings.shape[0],1,1)],dim=2)
-        # 隐藏特征可以丢弃
-        points_move = self.deform(d)
-        points_move = F.tanh(points_move)
-        # points_move = points_move.reshape([points_move.shape[0],self.point_num,3])
+        x = torch.cat([embeddings,ref.repeat(embeddings.shape[0],1,1)],dim=2)
+        y = x
+        x = self.deform1(x, adj, None)
+        x = self.deform2(x, adj, None)
+        x = self.deform3(x, adj, None)
+        x = self.deform4(x, adj, None)
         
-        rgb = self.deform_rgb(d)
-        rgb = F.sigmoid(rgb)
-        # rgb = rgb.reshape([rgb.shape[0],self.point_num,3])
+        y = self.deform_rgb1(y, adj, None)
+        y = self.deform_rgb2(y, adj, None)
+        y = self.deform_rgb3(y, adj, None)
+        y = self.deform_rgb4(y, adj, None)
         
-        # points_move = self.fc(features_cat)
-        return points_move,rgb
+        return x,y
 
 class Renderer(nn.Module):
     '''
@@ -363,31 +354,30 @@ class DR_3D_Model(nn.Module):
         # mesh = TriangleMesh.from_obj(ref_path)
         # self.meshtemp = MeshTemplate(ref_path, is_symmetric=False)
         self.meshtemp = MyMeshTemplate(ref_path, is_symmetric=False)
-        self.mesh_trans = MyMeshTemplate('/home/zf/vscode/3d/DR_3DFM/data/cylinder_template_mesh/cylinder2602.obj', is_symmetric=False)
-        # # 构造adj mat
-        self.adj = torch.zeros([self.point_num,self.point_num])
         
-        # self.edges = nn.Parameter(self.faces, requires_grad=False)
-        for i in range(self.point_num):
-            self.adj[i,i] = 1
-        for i in range(self.meshtemp.mesh.faces.shape[0]):
-            a,b,c = self.meshtemp.mesh.faces[i]
-            self.adj[a,b] = 1
-            self.adj[b,a] = 1
-            self.adj[a,c] = 1
-            self.adj[c,a] = 1
-            self.adj[b,c] = 1
-            self.adj[c,b] = 1
-            
-        if torch.cuda.is_available():
-            self.adj = self.adj.cuda()
+        # # # 构造adj mat
+        # self.adj = torch.zeros([self.point_num,self.point_num])
+        # # self.edges = nn.Parameter(self.faces, requires_grad=False)
+        # for i in range(self.point_num):
+        #     self.adj[i,i] = 1
+        # for i in range(self.meshtemp.mesh.faces.shape[0]):
+        #     a,b,c = self.meshtemp.mesh.faces[i]
+        #     self.adj[a,b] = 1
+        #     self.adj[b,a] = 1
+        #     self.adj[a,c] = 1
+        #     self.adj[c,a] = 1
+        #     self.adj[b,c] = 1
+        #     self.adj[c,b] = 1
+        # if torch.cuda.is_available():
+        #     self.adj = self.adj.cuda()
         
         # 图片特征提取网络
         self.img_embedding_model = Img_Embedding_Model()
         
         # 三维形变网络
-        self.mesh_deform_model = Mesh_Deform_Model(adj = self.adj,N=self.N,f_dim=self.f_dim,point_num = self.point_num)
-        
+        self.adj = torch.transpose(self.meshtemp.mesh.edges,0,1).cuda()
+        self.mesh_deform_model = Mesh_Deform_Model(N=self.N,f_dim=self.f_dim,point_num = self.point_num)
+        self.mesh_deform_model = self.mesh_deform_model.cuda()
         # 可微渲染器
         self.renderer = Renderer(N=self.N,f_dim=self.f_dim,point_num = self.point_num)
         
@@ -431,11 +421,10 @@ class DR_3D_Model(nn.Module):
         # for i in range(len(embeddings)):
         #     features_cat[:,i*self.f_dim:(i+1)*self.f_dim] = embeddings[i]
         # 将特征输入解码器,得到displacement map和uv map
-        points_move,rgb = self.mesh_deform_model(feature_per_point,self.meshtemp.mesh.vertices)
+        points_move,rgb = self.mesh_deform_model(feature_per_point,self.meshtemp.mesh.vertices,self.adj)
         rec_mesh = points_move+self.meshtemp.mesh.vertices.repeat(points_move.shape[0],1,1)
         # rec_mesh = points_move
         # 渲染
         vertex_positions,mesh_faces,mesh_face_textures = self.meshtemp.forward_renderer(rec_mesh)
         repro_imgs,img_probs = self.renderer(vertex_positions,mesh_faces,mesh_face_textures,rgb)
-        self.mesh_trans.mesh.vertices = rec_mesh
-        return repro_imgs,rec_mesh,img_probs,self.meshtemp.mesh,rgb,self.mesh_trans.mesh
+        return repro_imgs,rec_mesh,img_probs,self.meshtemp.mesh,rgb

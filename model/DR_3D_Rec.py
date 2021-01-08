@@ -189,25 +189,25 @@ class Mesh_Deform_Model(nn.Module):
         self.N = N
         self.f_dim = f_dim
         self.point_num = point_num
-        # self.deform = nn.Linear(N*f_dim,point_num*3)
+
         self.hidden_dim = 192
         self.last_hidden_dim = 192
         self.gconv_activation = True
         self.coord_dim = 3
         
-        self.adj = adj
-        # self.adj = torch.transpose(adj,0,1)
+        # self.adj = adj
+        self.adj = torch.transpose(adj,0,1)
         
         normalize = True
         
-        self.deform_rgb1 = GConv(in_features=963, out_features=3, adj_mat=self.adj)
-        # self.deform_rgb1 = GraphConv(in_channels = 963, out_channels= 3)
+        # self.deform_rgb1 = GConv(in_features=963, out_features=3, adj_mat=self.adj)
+        self.deform_rgb1 = GraphConv(in_channels = 963, out_channels= 3)
         # self.deform_rgb2 = GraphConv(in_channels = 512, out_channels= 128)
         # self.deform_rgb3 = GraphConv(in_channels = 128, out_channels= 32)
         # self.deform_rgb4 = GraphConv(in_channels = 32, out_channels= 3)
         
-        self.deform1 = GConv(in_features=963, out_features=3, adj_mat=self.adj)
-        # self.deform1 = GraphConv(in_channels = 963, out_channels= 3)
+        # self.deform1 = GConv(in_features=963, out_features=3, adj_mat=self.adj)
+        self.deform1 = GraphConv(in_channels = 963, out_channels= 3)
         # self.deform2 = GraphConv(in_channels = 512, out_channels= 128)
         # self.deform3 = GraphConv(in_channels = 128, out_channels= 32)
         # self.deform4 = GraphConv(in_channels = 32, out_channels= 3)
@@ -222,12 +222,14 @@ class Mesh_Deform_Model(nn.Module):
         # 初始参考坐标ref串联给每个点
         x = torch.cat([embeddings,ref.repeat(embeddings.shape[0],1,1)],dim=2)
         y = x
-        x = self.deform1(x)
+        x = self.deform1(x, adj, None)
+        x = 00000.1*F.tanh(x)
         # x = self.deform2(x, adj, None)
         # x = self.deform3(x, adj, None)
         # x = self.deform4(x, adj, None)
         
-        y = self.deform_rgb1(y)
+        y = self.deform_rgb1(y, adj, None)
+        y = 00000.1*F.sigmoid(y)
         # y = self.deform_rgb2(y, adj, None)
         # y = self.deform_rgb3(y, adj, None)
         # y = self.deform_rgb4(y, adj, None)
@@ -359,28 +361,28 @@ class DR_3D_Model(nn.Module):
         # mesh = TriangleMesh.from_obj(ref_path)
         self.meshtemp = MyMeshTemplate(ref_path, is_symmetric=False)
         
-        # 构造adj mat
-        self.adj = torch.zeros([self.point_num,self.point_num])
-        # self.edges = nn.Parameter(self.faces, requires_grad=False)
-        for i in range(self.point_num):
-            self.adj[i,i] = 1
-        for i in range(self.meshtemp.mesh.faces.shape[0]):
-            a,b,c = self.meshtemp.mesh.faces[i]
-            self.adj[a,b] = 1
-            self.adj[b,a] = 1
-            self.adj[a,c] = 1
-            self.adj[c,a] = 1
-            self.adj[b,c] = 1
-            self.adj[c,b] = 1
-        if torch.cuda.is_available():
-            self.adj = self.adj.cuda()
+        # # 构造adj mat
+        # self.adj = torch.zeros([self.point_num,self.point_num])
+        # # self.edges = nn.Parameter(self.faces, requires_grad=False)
+        # for i in range(self.point_num):
+        #     self.adj[i,i] = 1
+        # for i in range(self.meshtemp.mesh.faces.shape[0]):
+        #     a,b,c = self.meshtemp.mesh.faces[i]
+        #     self.adj[a,b] = 1
+        #     self.adj[b,a] = 1
+        #     self.adj[a,c] = 1
+        #     self.adj[c,a] = 1
+        #     self.adj[b,c] = 1
+        #     self.adj[c,b] = 1
+        # if torch.cuda.is_available():
+        #     self.adj = self.adj.cuda()
         
         # 图片特征提取网络
         self.img_embedding_model = Img_Embedding_Model()
         
         # 三维形变网络
         
-        self.mesh_deform_model = Mesh_Deform_Model(self.adj,N=self.N,f_dim=self.f_dim,point_num = self.point_num)
+        self.mesh_deform_model = Mesh_Deform_Model(self.meshtemp.mesh.edges,N=self.N,f_dim=self.f_dim,point_num = self.point_num)
 
         # 可微渲染器
         self.renderer = Renderer(N=self.N,f_dim=self.f_dim,point_num = self.point_num)
@@ -426,6 +428,7 @@ class DR_3D_Model(nn.Module):
         #     features_cat[:,i*self.f_dim:(i+1)*self.f_dim] = embeddings[i]
         # 将特征输入解码器,得到displacement map和uv map
         points_move,rgb = self.mesh_deform_model(feature_per_point,self.meshtemp.mesh.vertices)
+        print(points_move.shape,rgb.shape)
         rec_mesh = points_move+self.meshtemp.mesh.vertices.repeat(points_move.shape[0],1,1)
         # rec_mesh = points_move
         # 渲染

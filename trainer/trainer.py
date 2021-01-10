@@ -68,7 +68,7 @@ class Trainer(BaseTrainer):
             # loss_lap += 0.001*Lap_Loss(self.model.adj,rec_mesh)
             # 边长损失
             # loss_edge += 1*Edge_regularization(rec_mesh,mesh.faces.long())
-            loss_edge += kal.metrics.mesh.edge_length(mesh)
+            loss_edge += 100*kal.metrics.mesh.edge_length(mesh)
             # 法向损失
             # loss_flat += 0.0001*Loss_flat(rec_mesh,mesh)
             # CD损失

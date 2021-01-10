@@ -29,58 +29,6 @@ from model.gprojection import GProjection
 from .mesh_template import MeshTemplate,MyMeshTemplate
 
 
-class Mesh_Deform_Model(nn.Module):
-    '''
-    N视角的特征提取器
-    '''
-    def __init__(self,adj, N = 6,f_dim=512, point_num = 1024):
-        super(Mesh_Deform_Model, self).__init__()
-        '''
-        初始化参数:
-        '''
-        self.N = N
-        self.f_dim = f_dim
-        self.point_num = point_num
-        self.adj = adj
-        # self.deform = nn.Linear(N*f_dim,point_num*3)
-        self.hidden_dim = 192
-        self.last_hidden_dim = 192
-        self.gconv_activation = True
-        self.coord_dim = 3
-        self.deform = GConv(in_features=self.f_dim*6+3, out_features=self.coord_dim,
-                    adj_mat=self.adj)
-        # self.deform = GBottleneck(6, self.f_dim*6+3, self.hidden_dim, self.coord_dim,
-        #             self.adj, activation=self.gconv_activation)
-        # nn.ModuleList([
-        # GBottleneck(6, self.features_dim, self.hidden_dim, self.coord_dim,
-        #             self.adj, activation=self.gconv_activation),
-        # GBottleneck(6, self.features_dim, self.hidden_dim, self.coord_dim,
-        #             self.adj, activation=self.gconv_activation),
-        # GBottleneck(6, self.features_dim, self.hidden_dim, self.last_hidden_dim,
-        #             self.adj, activation=self.gconv_activation)
-        # ])
-        pass
-
-    def forward(self,embeddings,ref):
-        '''
-        输入: N个视角下的特征 N list dim
-        输出: N个视角融合出来的三维mesh形变量 : 顶点数*3
-        '''
-        # 将所有特征串起
-        features_cat = torch.zeros([embeddings[0].shape[0],self.f_dim*self.N]).cuda()
-        for i in range(len(embeddings)):
-            features_cat[:,i*self.f_dim:(i+1)*self.f_dim] = embeddings[i]
-        # 初始参考坐标ref串联给每个点
-        ref = ref.repeat(embeddings[0].shape[0],1,1)
-        b = torch.unsqueeze(features_cat,1)
-        c = b.repeat(1,self.point_num,1)
-        d = torch.cat([c,ref],dim=2)
-        # 隐藏特征可以丢弃
-        points_move = self.deform(d)
-        points_move = F.tanh(points_move)
-        # points_move = self.fc(features_cat)
-        return points_move.reshape([points_move.shape[0],self.point_num,3])
-    
 # 相机变换
 import copy
 def eulerAnglesToRotationMatrix(angles1) :
@@ -243,10 +191,27 @@ class Mesh_Deform_Model(nn.Module):
         self.last_hidden_dim = 192
         self.gconv_activation = True
         self.coord_dim = 3
-        self.deform_rgb = GConv(in_features=963, out_features=self.coord_dim,
-            adj_mat=self.adj)
-        self.deform = GConv(in_features=963, out_features=self.coord_dim,
-                    adj_mat=self.adj)
+        self.deform_rgb1 = GConv(in_features=963, out_features=256,adj_mat=self.adj)
+        self.deform_rgb2 = GConv(in_features=256, out_features=3,adj_mat=self.adj)
+        # self.deform_rgb3 = GConv(in_features=64, out_features=16,adj_mat=self.adj)
+        # self.deform_rgb4 = GConv(in_features=16, out_features=self.coord_dim,adj_mat=self.adj)
+        
+        self.deform1 = GConv(in_features=963, out_features=256,adj_mat=self.adj)
+        self.deform2 = GConv(in_features=256, out_features=3,adj_mat=self.adj)
+        # self.deform3 = GConv(in_features=64, out_features=16,adj_mat=self.adj)
+        # self.deform4 = GConv(in_features=16, out_features=self.coord_dim,adj_mat=self.adj)
+        
+        # 特征变换
+        self.mlp_rgb1 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
+        self.mlp_rgb2 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
+        self.mlp_rgb3 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
+        self.mlp_rgb4 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
+
+        self.mlp1 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
+        self.mlp2 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
+        self.mlp3 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
+        self.mlp4 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
+
         # self.deform = GBottleneck(1, 963, self.hidden_dim, self.coord_dim,self.adj, activation=self.gconv_activation)
         # self.deform_rgb = GBottleneck(1, 963, self.hidden_dim, self.coord_dim,self.adj, activation=self.gconv_activation)
         pass
@@ -258,15 +223,30 @@ class Mesh_Deform_Model(nn.Module):
         '''
         # 初始参考坐标ref串联给每个点
         d = torch.cat([embeddings,ref.repeat(embeddings.shape[0],1,1)],dim=2)
-        # 隐藏特征可以丢弃
-        points_move,_ = self.deform(d)
-        points_move = F.tanh(points_move)
-        # points_move = points_move.reshape([points_move.shape[0],self.point_num,3])
-        
-        rgb,_ = self.deform_rgb(d)
-        rgb = F.sigmoid(rgb)
+        x = d
+        y = d
+        x = self.mlp1(x)
+        x = self.deform1(x)
+        x = self.mlp2(x)
+        x = self.deform2(x)
+        # x = self.mlp3(x)
+        # x = self.deform3(x)
+        # x = self.mlp4(x)
+        # x = self.deform4(x)
+        x = F.tanh(x)
+        points_move = x
+        # points_move = points_move.reshape([points_move.shape[0],self.point_num,3])\
+        x = self.mlp_rgb1(x)
+        y = self.deform_rgb1(y)
+        x = self.mlp_rgb2(x)
+        y = self.deform_rgb2(y)
+        # x = self.mlp_rgb3(x)
+        # y = self.deform_rgb3(y)
+        # x = self.mlp_rgb4(x)
+        # y = self.deform_rgb4(y)
+        y = F.sigmoid(y)
+        rgb = y
         # rgb = rgb.reshape([rgb.shape[0],self.point_num,3])
-        
         # points_move = self.fc(features_cat)
         return points_move,rgb
 

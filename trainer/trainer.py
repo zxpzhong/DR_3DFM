@@ -50,7 +50,7 @@ class Trainer(BaseTrainer):
             data, target = [item.to(self.device) for item in data], target.to(self.device)
             mask = [item.to(self.device) for item in mask]
             self.optimizer.zero_grad()
-            output,rec_mesh,img_probs,mesh,rgb,mesh_trans = self.model(data)
+            output,rec_mesh,img_probs,mesh,rgb = self.model(data)
             loss_img = 0
             loss_mask = 0
             loss_lap = 0

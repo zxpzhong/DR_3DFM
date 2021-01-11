@@ -65,12 +65,12 @@ class Trainer(BaseTrainer):
                 # loss += L1(torch.where(img > 0,torch.ones_like(img) ,torch.zeros_like(img)) , torch.where(data[i] > 0,torch.ones_like(img) ,torch.zeros_like(img)) )
                 loss_mask += L1(img_probs[i],mask[i])
             # Lap平滑损失
-            # loss_lap += 0.001*Lap_Loss(self.model.adj,rec_mesh)
+            loss_lap += 0.001*Lap_Loss(self.model.adj,rec_mesh)
             # 边长损失
             # loss_edge += 1*Edge_regularization(rec_mesh,mesh.faces.long())
             loss_edge += 100*kal.metrics.mesh.edge_length(mesh)
             # 法向损失
-            # loss_flat += 0.0001*Loss_flat(rec_mesh,mesh)
+            loss_flat += 0.0001*Loss_flat(rec_mesh,mesh)
             # CD损失
             # for i in range(rec_mesh.shape[0]):
             #     # 生成物体和参考圆柱之间的CD损失

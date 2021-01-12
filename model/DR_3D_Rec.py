@@ -3,6 +3,7 @@ from torch import embedding
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.autograd import Variable
 from torch.nn import Parameter
 import math
 import imageio
@@ -28,6 +29,8 @@ from model.gprojection import GProjection
 # from model.reconstruction import ReconstructionNetwork
 from .mesh_template import MeshTemplate,MyMeshTemplate
 
+# pytorch3d
+from pytorch3d.structures import Meshes
 
 # 相机变换
 import copy
@@ -375,18 +378,24 @@ class DR_3D_Model(nn.Module):
         
         # 参考mesh
         # 添加参考mesh信息
-        # mesh = TriangleMesh.from_obj(ref_path)
+        
         # self.meshtemp = MeshTemplate(ref_path, is_symmetric=False)
-        self.meshtemp = MyMeshTemplate(ref_path, is_symmetric=False)
-        self.mesh_trans = MyMeshTemplate('/home/zf/vscode/3d/DR_3DFM/data/cylinder_template_mesh/cylinder2602.obj', is_symmetric=False)
+        # self.meshtemp = MyMeshTemplate(ref_path, is_symmetric=False)
+        # self.mesh_trans = MyMeshTemplate('/home/zf/vscode/3d/DR_3DFM/data/cylinder_template_mesh/cylinder2602.obj', is_symmetric=False)
+        
+        # 转化为pytorch3d
+        mesh = TriangleMesh.from_obj(ref_path)
+        # self.mesh = Meshes(verts=mesh.vertices.unsqueeze(0), faces=mesh.faces.unsqueeze(0))
+        self.vertices = Variable(mesh.vertices,requires_grad=False).cuda()
+        self.faces = Variable(mesh.faces,requires_grad=False).cuda()
         # # 构造adj mat
         self.adj = torch.zeros([self.point_num,self.point_num])
         
         # self.edges = nn.Parameter(self.faces, requires_grad=False)
         for i in range(self.point_num):
             self.adj[i,i] = 1
-        for i in range(self.meshtemp.mesh.faces.shape[0]):
-            a,b,c = self.meshtemp.mesh.faces[i]
+        for i in range(self.faces.shape[0]):
+            a,b,c = self.faces[i]
             self.adj[a,b] = 1
             self.adj[b,a] = 1
             self.adj[a,c] = 1
@@ -435,7 +444,7 @@ class DR_3D_Model(nn.Module):
             # follow pixel2mesh!!!
             # new_p = cam_mat * (old_p - cam_pos)
             # 以相机为中心
-            points_bxpx3 = self.meshtemp.mesh.vertices - self.cameras_coordinate[i].view(-1, 1, 3)
+            points_bxpx3 = self.vertices - self.cameras_coordinate[i].view(-1, 1, 3)
             # 以相机坐标系为世界坐标系
             points_bxpx3 = torch.matmul(points_bxpx3, cameratrans_rot_bx3x3)
             # 投影
@@ -446,13 +455,18 @@ class DR_3D_Model(nn.Module):
         # for i in range(len(embeddings)):
         #     features_cat[:,i*self.f_dim:(i+1)*self.f_dim] = embeddings[i]
         # 将特征输入解码器,得到displacement map和uv map
-        points_move,rgb,global_ = self.mesh_deform_model(feature_per_point,self.meshtemp.mesh.vertices)
+        points_move,rgb,global_ = self.mesh_deform_model(feature_per_point,self.vertices)
         # 生成全局位移
         global_ = torch.mean(global_,dim=1).unsqueeze(1).repeat(1,points_move.shape[1],1)
-        rec_mesh = global_+points_move+self.meshtemp.mesh.vertices.repeat(points_move.shape[0],1,1)
+        rec_mesh = global_+points_move+self.vertices.repeat(points_move.shape[0],1,1)
         # rec_mesh = points_move
         # 渲染
-        vertex_positions,mesh_faces,mesh_face_textures = self.meshtemp.forward_renderer(rec_mesh)
-        repro_imgs,img_probs = self.renderer(vertex_positions,mesh_faces,mesh_face_textures,rgb)
-        self.mesh_trans.mesh.vertices = rec_mesh
-        return repro_imgs,rec_mesh,img_probs,self.meshtemp.mesh,rgb
+        # vertex_positions:torch.Size([4, 2562, 3])
+        # mesh_faces : torch.Size([5120, 3])
+        # mesh_face_textures : None
+        # rgb : torch.Size([4, 2562, 3])
+        # vertex_positions,mesh_faces,mesh_face_textures = self.meshtemp.forward_renderer(rec_mesh)
+
+        repro_imgs,img_probs = self.renderer(rec_mesh,self.faces,None,rgb)
+        new_mesh = Meshes(verts=rec_mesh, faces=self.faces.unsqueeze(0).repeat(rec_mesh.shape[0],1,1))
+        return repro_imgs,rec_mesh,img_probs,self.faces,rgb,new_mesh

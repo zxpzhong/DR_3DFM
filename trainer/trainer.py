@@ -50,7 +50,7 @@ class Trainer(BaseTrainer):
             data, target = [item.to(self.device) for item in data], target.to(self.device)
             mask = [item.to(self.device) for item in mask]
             self.optimizer.zero_grad()
-            output,rec_mesh,img_probs,mesh,rgb = self.model(data)
+            output,rec_mesh,img_probs,faces,rgb,new_mesh = self.model(data)
             loss_img = 0
             loss_mask = 0
             loss_lap = 0
@@ -110,7 +110,7 @@ class Trainer(BaseTrainer):
                     self._progress(batch_idx),
                     loss.item()))
                 # 保存为三维模型, point写入obj文件, face固定的, uv坐标值
-                save_mesh(rec_mesh[0].cpu().detach(),mesh.faces.long().cpu().detach(),rgb[0].cpu().detach(),os.path.join(self.config.log_dir,'{}_{}_{}.obj'.format(epoch,batch_idx,step)))
+                save_mesh(rec_mesh[0].cpu().detach(),faces.long().cpu().detach(),rgb[0].cpu().detach(),os.path.join(self.config.log_dir,'{}_{}_{}.obj'.format(epoch,batch_idx,step)))
                 # exit()
             if batch_idx == self.len_epoch:
                 break

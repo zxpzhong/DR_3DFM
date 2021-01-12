@@ -201,16 +201,18 @@ class Mesh_Deform_Model(nn.Module):
         # self.deform3 = GConv(in_features=64, out_features=16,adj_mat=self.adj)
         # self.deform4 = GConv(in_features=16, out_features=self.coord_dim,adj_mat=self.adj)
         
+        self.deform_global1 = GConv(in_features=963, out_features=256,adj_mat=self.adj)
+        self.deform_global2 = GConv(in_features=256, out_features=3,adj_mat=self.adj)
+        
         # 特征变换
         self.mlp_rgb1 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
         self.mlp_rgb2 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
-        self.mlp_rgb3 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
-        self.mlp_rgb4 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
 
         self.mlp1 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
         self.mlp2 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
-        self.mlp3 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
-        self.mlp4 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
+        
+        self.mlp_global1 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
+        self.mlp_global2 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
 
         # self.deform = GBottleneck(1, 963, self.hidden_dim, self.coord_dim,self.adj, activation=self.gconv_activation)
         # self.deform_rgb = GBottleneck(1, 963, self.hidden_dim, self.coord_dim,self.adj, activation=self.gconv_activation)
@@ -225,30 +227,31 @@ class Mesh_Deform_Model(nn.Module):
         d = torch.cat([embeddings,ref.repeat(embeddings.shape[0],1,1)],dim=2)
         x = d
         y = d
+        z = d
         x = self.mlp1(x)
         x = self.deform1(x)
         x = self.mlp2(x)
         x = self.deform2(x)
-        # x = self.mlp3(x)
-        # x = self.deform3(x)
-        # x = self.mlp4(x)
-        # x = self.deform4(x)
         x = F.tanh(x)
         points_move = x
+        
         # points_move = points_move.reshape([points_move.shape[0],self.point_num,3])\
         x = self.mlp_rgb1(x)
         y = self.deform_rgb1(y)
         x = self.mlp_rgb2(x)
         y = self.deform_rgb2(y)
-        # x = self.mlp_rgb3(x)
-        # y = self.deform_rgb3(y)
-        # x = self.mlp_rgb4(x)
-        # y = self.deform_rgb4(y)
         y = F.sigmoid(y)
         rgb = y
+        
+        z = self.mlp_global1(z)
+        z = self.deform_global1(z)
+        z = self.mlp_global2(z)
+        z = self.deform_global2(z)
+        z = F.tanh(z)
+        global_ = z
         # rgb = rgb.reshape([rgb.shape[0],self.point_num,3])
         # points_move = self.fc(features_cat)
-        return points_move,rgb
+        return points_move,rgb,global_
 
 class Renderer(nn.Module):
     '''
@@ -443,8 +446,10 @@ class DR_3D_Model(nn.Module):
         # for i in range(len(embeddings)):
         #     features_cat[:,i*self.f_dim:(i+1)*self.f_dim] = embeddings[i]
         # 将特征输入解码器,得到displacement map和uv map
-        points_move,rgb = self.mesh_deform_model(feature_per_point,self.meshtemp.mesh.vertices)
-        rec_mesh = points_move+self.meshtemp.mesh.vertices.repeat(points_move.shape[0],1,1)
+        points_move,rgb,global_ = self.mesh_deform_model(feature_per_point,self.meshtemp.mesh.vertices)
+        # 生成全局位移
+        global_ = torch.mean(global_,dim=1).unsqueeze(1).repeat(1,points_move.shape[1],1)
+        rec_mesh = global_+points_move+self.meshtemp.mesh.vertices.repeat(points_move.shape[0],1,1)
         # rec_mesh = points_move
         # 渲染
         vertex_positions,mesh_faces,mesh_face_textures = self.meshtemp.forward_renderer(rec_mesh)

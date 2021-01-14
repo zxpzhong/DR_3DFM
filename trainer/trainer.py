@@ -9,6 +9,11 @@ from loss.loss import L1,L2,Lap_Loss,CE,Edge_regularization,Loss_flat
 import os
 import kaolin as kal
 
+# pytorch3d loss
+from pytorch3d.loss.mesh_laplacian_smoothing import mesh_laplacian_smoothing
+from pytorch3d.loss.mesh_edge_loss import mesh_edge_loss
+from pytorch3d.loss.mesh_normal_consistency import mesh_normal_consistency
+
 VIEW_NUMS = 6
 
 class Trainer(BaseTrainer):
@@ -65,11 +70,14 @@ class Trainer(BaseTrainer):
                 # loss += L1(torch.where(img > 0,torch.ones_like(img) ,torch.zeros_like(img)) , torch.where(data[i] > 0,torch.ones_like(img) ,torch.zeros_like(img)) )
                 loss_mask += L1(img_probs[i],mask[i])
             # Lap平滑损失
+            loss_lap+=mesh_laplacian_smoothing(new_mesh)
             # loss_lap += 0.001*Lap_Loss(self.model.adj,rec_mesh)
             # 边长损失
+            loss_edge+=mesh_edge_loss(new_mesh)
             # loss_edge += 1*Edge_regularization(rec_mesh,mesh.faces.long())
             # loss_edge += 100*kal.metrics.mesh.edge_length(mesh)
             # 法向损失
+            loss_flat+=mesh_normal_consistency(new_mesh)
             # loss_flat += 0.0001*Loss_flat(rec_mesh,mesh)
             # CD损失
             # for i in range(rec_mesh.shape[0]):
@@ -110,7 +118,7 @@ class Trainer(BaseTrainer):
                     self._progress(batch_idx),
                     loss.item()))
                 # 保存为三维模型, point写入obj文件, face固定的, uv坐标值
-                save_mesh(rec_mesh[0].cpu().detach(),faces.long().cpu().detach(),rgb[0].cpu().detach(),os.path.join(self.config.log_dir,'{}_{}_{}.obj'.format(epoch,batch_idx,step)))
+                save_mesh(rec_mesh[0].cpu().detach(),faces.long().cpu().detach(),rgb[0].cpu().detach(),os.path.join(self.config.obj_dir,'{}_{}_{}.obj'.format(epoch,batch_idx,step)))
                 # exit()
             if batch_idx == self.len_epoch:
                 break

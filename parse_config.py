@@ -31,6 +31,9 @@ class ConfigParser:
         else:
             run_id = datetime.now().strftime(r'%m%d_%H%M%S')+'_'+run_id
         print("save dir name : {}".format(run_id))
+        
+
+
         # ZIP code [ default choice ]
         from utils.ZIPCODE import ZIPCODE
         import time
@@ -44,14 +47,18 @@ class ConfigParser:
         except_file = ['pth']
         ZIPCODE(target_path,target_name,source_path,except_dir,except_file)
 
-
         self._save_dir = save_dir / 'models' / exper_name / run_id
         self._log_dir = save_dir / 'log' / exper_name / run_id
-
+        self._obj_dir = save_dir / 'obj' / exper_name / run_id
+        
+        # Save 3D obj
+        # path = os.path.join('./saved','obj',exper_name,run_id)
+        
         # make directory for saving checkpoints and log.
         exist_ok = run_id == ''
         self.save_dir.mkdir(parents=True, exist_ok=exist_ok)
         self.log_dir.mkdir(parents=True, exist_ok=exist_ok)
+        self.obj_dir.mkdir(parents=True, exist_ok=exist_ok)
 
         # save updated config file to the checkpoint dir
         write_json(self.config, self.save_dir / 'config.json')
@@ -148,6 +155,9 @@ class ConfigParser:
     @property
     def log_dir(self):
         return self._log_dir
+    @property
+    def obj_dir(self):
+        return self._obj_dir
 
 # helper functions to update config dict with custom cli options
 def _update_config(config, modification):

@@ -27,3 +27,10 @@ for dir in dirs:
         if log in deleted:
             shutil.rmtree(models+dir+'/'+log)
 
+models = 'saved/obj/'
+dirs = os.listdir(models)
+for dir in dirs:
+    logs = os.listdir(models+dir)
+    for log in logs:
+        if log in deleted:
+            shutil.rmtree(models+dir+'/'+log)

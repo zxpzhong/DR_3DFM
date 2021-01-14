@@ -194,28 +194,28 @@ class Mesh_Deform_Model(nn.Module):
         self.last_hidden_dim = 192
         self.gconv_activation = True
         self.coord_dim = 3
-        self.deform_rgb1 = GConv(in_features=963, out_features=256,adj_mat=self.adj)
-        self.deform_rgb2 = GConv(in_features=256, out_features=3,adj_mat=self.adj)
+        self.deform_rgb1 = GConv(in_features=963, out_features=3,adj_mat=self.adj)
+        # self.deform_rgb2 = GConv(in_features=256, out_features=3,adj_mat=self.adj)
         # self.deform_rgb3 = GConv(in_features=64, out_features=16,adj_mat=self.adj)
         # self.deform_rgb4 = GConv(in_features=16, out_features=self.coord_dim,adj_mat=self.adj)
         
-        self.deform1 = GConv(in_features=963, out_features=256,adj_mat=self.adj)
-        self.deform2 = GConv(in_features=256, out_features=3,adj_mat=self.adj)
+        self.deform1 = GConv(in_features=963, out_features=3,adj_mat=self.adj)
+        # self.deform2 = GConv(in_features=256, out_features=3,adj_mat=self.adj)
         # self.deform3 = GConv(in_features=64, out_features=16,adj_mat=self.adj)
         # self.deform4 = GConv(in_features=16, out_features=self.coord_dim,adj_mat=self.adj)
         
-        self.deform_global1 = GConv(in_features=963, out_features=256,adj_mat=self.adj)
-        self.deform_global2 = GConv(in_features=256, out_features=3,adj_mat=self.adj)
+        self.deform_global1 = GConv(in_features=963, out_features=3,adj_mat=self.adj)
+        # self.deform_global2 = GConv(in_features=256, out_features=3,adj_mat=self.adj)
         
         # 特征变换
-        self.mlp_rgb1 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
-        self.mlp_rgb2 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
+        # self.mlp_rgb1 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
+        # self.mlp_rgb2 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
 
-        self.mlp1 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
-        self.mlp2 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
+        # self.mlp1 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
+        # self.mlp2 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
         
-        self.mlp_global1 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
-        self.mlp_global2 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
+        # self.mlp_global1 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
+        # self.mlp_global2 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
 
         # self.deform = GBottleneck(1, 963, self.hidden_dim, self.coord_dim,self.adj, activation=self.gconv_activation)
         # self.deform_rgb = GBottleneck(1, 963, self.hidden_dim, self.coord_dim,self.adj, activation=self.gconv_activation)
@@ -231,25 +231,25 @@ class Mesh_Deform_Model(nn.Module):
         x = d
         y = d
         z = d
-        x = self.mlp1(x)
+        # x = self.mlp1(x)
         x = self.deform1(x)
-        x = self.mlp2(x)
-        x = self.deform2(x)
+        # x = self.mlp2(x)
+        # x = self.deform2(x)
         x = F.tanh(x)
         points_move = x
         
         # points_move = points_move.reshape([points_move.shape[0],self.point_num,3])\
-        x = self.mlp_rgb1(x)
+        # x = self.mlp_rgb1(x)
         y = self.deform_rgb1(y)
-        x = self.mlp_rgb2(x)
-        y = self.deform_rgb2(y)
+        # x = self.mlp_rgb2(x)
+        # y = self.deform_rgb2(y)
         y = F.sigmoid(y)
         rgb = y
         
-        z = self.mlp_global1(z)
+        # z = self.mlp_global1(z)
         z = self.deform_global1(z)
-        z = self.mlp_global2(z)
-        z = self.deform_global2(z)
+        # z = self.mlp_global2(z)
+        # z = self.deform_global2(z)
         z = F.tanh(z)
         global_ = z
         # rgb = rgb.reshape([rgb.shape[0],self.point_num,3])

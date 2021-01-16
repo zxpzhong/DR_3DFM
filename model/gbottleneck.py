@@ -43,4 +43,4 @@ class GBottleneck(nn.Module):
         x_hidden = self.blocks(x)
         x_out = self.conv2(x_hidden)
 
-        return x_out, x_hidden
+        return x_out

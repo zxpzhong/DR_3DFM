@@ -26,7 +26,7 @@ from model.gpooling import GUnpooling
 from model.gprojection import GProjection
 
 # convmesh部分
-# from model.reconstruction import ReconstructionNetwork
+from model.reconstruction import ReconstructionNetwork
 from .mesh_template import MeshTemplate,MyMeshTemplate
 
 # pytorch3d
@@ -53,8 +53,8 @@ def eulerAnglesToRotationMatrix(angles1) :
                     ])
     R = np.dot(R_z, np.dot( R_y, R_x ))
     return R
-# R = eulerAnglesToRotationMatrix([35,20,-30])
-R = eulerAnglesToRotationMatrix([0,0,0])
+R = eulerAnglesToRotationMatrix([35,20,-30])
+# R = eulerAnglesToRotationMatrix([0,0,0])
 def isRotationMatrix(R) :
     Rt = np.transpose(R)
     shouldBeIdentity = np.dot(Rt, R)
@@ -98,15 +98,15 @@ class Img_Embedding_Model(nn.Module):
     N视角的特征提取器
     '''
 
-    def __init__(self, n_classes_input=4, pretrained=False):
+    def __init__(self, n_classes_input=24, pretrained=False):
         super(Img_Embedding_Model, self).__init__()
 
         self.features_dim = 960
 
-        self.conv0_1 = nn.Conv2d(n_classes_input, 16, 3, stride=1, padding=1)
-        self.conv0_2 = nn.Conv2d(16, 16, 3, stride=1, padding=1)
+        self.conv0_1 = nn.Conv2d(n_classes_input, 24, 3, stride=1, padding=1)
+        self.conv0_2 = nn.Conv2d(24, 24, 3, stride=1, padding=1)
 
-        self.conv1_1 = nn.Conv2d(16, 32, 3, stride=2, padding=1)  # 224 -> 112
+        self.conv1_1 = nn.Conv2d(24, 32, 3, stride=2, padding=1)  # 224 -> 112
         self.conv1_2 = nn.Conv2d(32, 32, 3, stride=1, padding=1)
         self.conv1_3 = nn.Conv2d(32, 32, 3, stride=1, padding=1)
 
@@ -174,87 +174,7 @@ class Img_Embedding_Model(nn.Module):
         img = F.relu(self.conv5_4(img))
         img5 = img
 
-        return [img2, img3, img4, img5]
-
-class Mesh_Deform_Model(nn.Module):
-    '''
-    N视角的特征提取器
-    '''
-    def __init__(self,adj, N = 6,f_dim=512, point_num = 1024):
-        super(Mesh_Deform_Model, self).__init__()
-        '''
-        初始化参数:
-        '''
-        self.N = N
-        self.f_dim = f_dim
-        self.point_num = point_num
-        self.adj = adj
-        # self.deform = nn.Linear(N*f_dim,point_num*3)
-        self.hidden_dim = 192
-        self.last_hidden_dim = 192
-        self.gconv_activation = True
-        self.coord_dim = 3
-        self.deform_rgb1 = GConv(in_features=963, out_features=3,adj_mat=self.adj)
-        # self.deform_rgb2 = GConv(in_features=256, out_features=3,adj_mat=self.adj)
-        # self.deform_rgb3 = GConv(in_features=64, out_features=16,adj_mat=self.adj)
-        # self.deform_rgb4 = GConv(in_features=16, out_features=self.coord_dim,adj_mat=self.adj)
-        
-        self.deform1 = GConv(in_features=963, out_features=3,adj_mat=self.adj)
-        # self.deform2 = GConv(in_features=256, out_features=3,adj_mat=self.adj)
-        # self.deform3 = GConv(in_features=64, out_features=16,adj_mat=self.adj)
-        # self.deform4 = GConv(in_features=16, out_features=self.coord_dim,adj_mat=self.adj)
-        
-        self.deform_global1 = GConv(in_features=963, out_features=3,adj_mat=self.adj)
-        # self.deform_global2 = GConv(in_features=256, out_features=3,adj_mat=self.adj)
-        
-        # 特征变换
-        # self.mlp_rgb1 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
-        # self.mlp_rgb2 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
-
-        # self.mlp1 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
-        # self.mlp2 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
-        
-        # self.mlp_global1 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
-        # self.mlp_global2 = nn.Sequential(nn.Conv1d(self.point_num, self.point_num , 1),nn.BatchNorm1d(self.point_num),nn.ReLU(),)
-
-        # self.deform = GBottleneck(1, 963, self.hidden_dim, self.coord_dim,self.adj, activation=self.gconv_activation)
-        # self.deform_rgb = GBottleneck(1, 963, self.hidden_dim, self.coord_dim,self.adj, activation=self.gconv_activation)
-        pass
-
-    def forward(self,embeddings,ref):
-        '''
-        输入: N个视角下的特征 N list dim
-        输出: N个视角融合出来的三维mesh形变量 : 顶点数*3
-        '''
-        # 初始参考坐标ref串联给每个点
-        d = torch.cat([embeddings,ref.repeat(embeddings.shape[0],1,1)],dim=2)
-        x = d
-        y = d
-        z = d
-        # x = self.mlp1(x)
-        x = self.deform1(x)
-        # x = self.mlp2(x)
-        # x = self.deform2(x)
-        x = F.tanh(x)
-        points_move = x
-        
-        # points_move = points_move.reshape([points_move.shape[0],self.point_num,3])\
-        # x = self.mlp_rgb1(x)
-        y = self.deform_rgb1(y)
-        # x = self.mlp_rgb2(x)
-        # y = self.deform_rgb2(y)
-        y = F.sigmoid(y)
-        rgb = y
-        
-        # z = self.mlp_global1(z)
-        z = self.deform_global1(z)
-        # z = self.mlp_global2(z)
-        # z = self.deform_global2(z)
-        z = F.tanh(z)
-        global_ = z
-        # rgb = rgb.reshape([rgb.shape[0],self.point_num,3])
-        # points_move = self.fc(features_cat)
-        return points_move,rgb,global_
+        return img5
 
 class Renderer(nn.Module):
     '''
@@ -270,7 +190,7 @@ class Renderer(nn.Module):
         self.point_num = point_num
         
         # DIB渲染器
-        self.renderer = DIBRenderer(height=640, width=400, mode='VertexColor',camera_fov_y=66.96 * np.pi / 180.0)
+        self.renderer = DIBRenderer(height=640, width=400, mode='Lambertian',camera_fov_y=66.96 * np.pi / 180.0)
         self.renderer.set_look_at_parameters([0],[0],[0],fovx=57.77316 * np.pi / 180.0, fovy=44.95887 * np.pi / 180.0, near=0.01, far=10.0)
         # 设置相机参数
         # self.renderer.set_camera_parameters()
@@ -315,12 +235,9 @@ class Renderer(nn.Module):
                             [-2.45261002+x, 3.5962286+y, -1.87506165+z],
                             [-3.12155638+x, 2.09254542+y, 2.21770186+z],
                             [-1.07692383+x, -1.37631717+y, 4.3081322+z]]
-        # xx = -0.3
-        # yy = 1.2
-        # zz = 0.1
-        xx = 0
-        yy = 0
-        zz = 0
+        xx = -0.3
+        yy = 1.2
+        zz = 0.1
         for i in range(6):
             self.cameras_coordinate[i] = np.array(self.cameras_coordinate[i])@R
             self.cameras_coordinate[i][0]+=xx
@@ -333,10 +250,7 @@ class Renderer(nn.Module):
         # self.gif_writer = imageio.get_writer('example.gif', mode='I')
         pass
 
-
-    def get_camera_info(self):
-        return self.cam_mat,self.cameras_coordinate
-    def forward(self,vertex_positions,mesh_faces,mesh_face_textures,rgb):
+    def forward(self,vertex_positions,mesh_faces,input_uvs,input_texture,mesh_face_textures):
         '''
         输入: 
             vertices : 顶点数*3
@@ -355,19 +269,22 @@ class Renderer(nn.Module):
             camera_view_shift = self.cameras_coordinate[i].repeat(vertex_positions.shape[0],1)
             self.renderer.camera_params = [camera_view_mtx, camera_view_shift, self.renderer.camera_params[2]]
             predictions, img_prob, _ = self.renderer(points=[vertex_positions, mesh_faces],
-                                   colors_bxpx3=rgb)
+                                   uv_bxpx2=input_uvs,
+                                   texture_bx3xthxtw=input_texture,
+                                   ft_fx3=mesh_face_textures)
             predictions = torch.cat((predictions, img_prob), dim=3).permute(0, 3, 1, 2)
             temp = predictions.detach().cpu().numpy()[0]
             # self.gif_writer.append_data((temp * 255).astype(np.uint8))
             images.append(predictions)
             img_probs.append(img_prob)
         return images,img_probs
-
+    def get_camera_info(self):
+        return self.cam_mat,self.cameras_coordinate
 
 class DR_3D_Model(nn.Module):
     r"""Differential Render based 3D Finger Reconstruction Model
         """
-    def __init__(self,N = 6,f_dim=512, point_num = 2562 , num_classes=1,ref_path = '/home/zf/vscode/3d/DR_3DFM/data/cylinder_template_mesh/icosphere2562.obj'):
+    def __init__(self,N = 6,f_dim=512, point_num = 962 , num_classes=1,ref_path = '/home/zf/vscode/3d/DR_3DFM/data/cylinder_template_mesh/uvsphere_31rings.obj'):
         super(DR_3D_Model, self).__init__()
         '''
         初始化参数:
@@ -378,48 +295,23 @@ class DR_3D_Model(nn.Module):
         
         # 参考mesh
         # 添加参考mesh信息
-        
-        # self.meshtemp = MeshTemplate(ref_path, is_symmetric=False)
-        # self.meshtemp = MyMeshTemplate(ref_path, is_symmetric=False)
-        # self.mesh_trans = MyMeshTemplate('/home/zf/vscode/3d/DR_3DFM/data/cylinder_template_mesh/cylinder2602.obj', is_symmetric=False)
-        
-        # 转化为pytorch3d
-        mesh = TriangleMesh.from_obj(ref_path)
-        # self.mesh = Meshes(verts=mesh.vertices.unsqueeze(0), faces=mesh.faces.unsqueeze(0))
-        self.vertices = Variable(mesh.vertices,requires_grad=False).cuda()
-        self.faces = Variable(mesh.faces,requires_grad=False).cuda()
-        # # 构造adj mat
-        self.adj = torch.zeros([self.point_num,self.point_num])
-        
-        # self.edges = nn.Parameter(self.faces, requires_grad=False)
-        for i in range(self.point_num):
-            self.adj[i,i] = 1
-        for i in range(self.faces.shape[0]):
-            a,b,c = self.faces[i]
-            self.adj[a,b] = 1
-            self.adj[b,a] = 1
-            self.adj[a,c] = 1
-            self.adj[c,a] = 1
-            self.adj[b,c] = 1
-            self.adj[c,b] = 1
-            
-        if torch.cuda.is_available():
-            self.adj = self.adj.cuda()
+        self.meshtemp = MeshTemplate(ref_path, is_symmetric=False)
         
         # 图片特征提取网络
         self.img_embedding_model = Img_Embedding_Model()
         
         # 三维形变网络
-        self.mesh_deform_model = Mesh_Deform_Model(adj = self.adj,N=self.N,f_dim=self.f_dim,point_num = self.point_num)
+        self.mesh_deform_model = ReconstructionNetwork(symmetric=False,
+                                  texture_res=256,
+                                  mesh_res=32,
+                                  interpolation_mode = 'bilinear',
+                                 )
         
         # 可微渲染器
         self.renderer = Renderer(N=self.N,f_dim=self.f_dim,point_num = self.point_num)
         
-        # 特征投影器
-        self.gprojection = GProjection(mesh_pos = [0,0,0], camera_f = [483.76885985,483.969696], camera_c = [351.56368,175.50937], bound=0, tensorflow_compatible=False)
-        
-        self.cam_mat,self.cameras_coordinate = self.renderer.get_camera_info()
-        
+        # GAP
+        self.GAP = nn.AdaptiveAvgPool2d((1,1))
         
         
     def forward(self, images):
@@ -428,45 +320,30 @@ class DR_3D_Model(nn.Module):
         输出: 对应N个视角的图片 : N list C*H*W
         '''
         # 为每张图像提取特征
-        embeddings = []
-        for i in range(len(images)):
-            embeddings.append(self.img_embedding_model(images[i]))
-        # 特征图投影到mesh
+        # embeddings = []
+        # for i in range(len(images)):
+        #     embeddings.append(self.img_embedding_model(images[i]))
         # features_cat = torch.zeros([embeddings[0].shape[0],self.f_dim*self.N]).cuda()
-        # 分别将六个视角的特征图 ,投影到同一个mesh
-        shape = np.array([images[0].shape[2],images[0].shape[3]])
-        feature_per_point = []
-        for i in range(len(images)):
-            pass
-            # 投影第i张图片的特征图, 投影到初始mesh上
-            # 采用正交投影,将mesh变换到相机坐标系下
-            cameratrans_rot_bx3x3 = self.cam_mat[i].repeat(images[0].shape[0],1,1).permute(0, 2, 1)
-            # follow pixel2mesh!!!
-            # new_p = cam_mat * (old_p - cam_pos)
-            # 以相机为中心
-            points_bxpx3 = self.vertices - self.cameras_coordinate[i].view(-1, 1, 3)
-            # 以相机坐标系为世界坐标系
-            points_bxpx3 = torch.matmul(points_bxpx3, cameratrans_rot_bx3x3)
-            # 投影
-            feature_per_point.append(self.gprojection(shape,embeddings[i],points_bxpx3).unsqueeze(-1))
-        # 每点特征GMP
-        feature_per_point = torch.cat([feature_per_point[0],feature_per_point[1],feature_per_point[2],feature_per_point[3],feature_per_point[4],feature_per_point[5]],dim=-1)
-        feature_per_point,_ = torch.max(feature_per_point, dim=-1)
         # for i in range(len(embeddings)):
-        #     features_cat[:,i*self.f_dim:(i+1)*self.f_dim] = embeddings[i]
+        #     x = self.GAP(embeddings[i])
+        #     x = x.view(x.size(0), -1)
+        #     features_cat[:,i*self.f_dim:(i+1)*self.f_dim] = x
+        
+        # 图像通道混合后直接unet
+        images
+        features_cat = images[0]
+        for i in range(len(images)-1):
+            features_cat = torch.cat((features_cat,images[i+1]),dim=1)
+        # 特征提取
+        features_cat = self.img_embedding_model(features_cat)
+        features_cat = self.GAP(features_cat)
+        features_cat = features_cat.view(features_cat.size(0), -1)
         # 将特征输入解码器,得到displacement map和uv map
-        points_move,rgb,global_ = self.mesh_deform_model(feature_per_point,self.vertices)
-        # 生成全局位移
-        global_ = torch.mean(global_,dim=1).unsqueeze(1).repeat(1,points_move.shape[1],1)
-        rec_mesh = global_+points_move+self.vertices.repeat(points_move.shape[0],1,1)
-        # rec_mesh = points_move
-        # 渲染
-        # vertex_positions:torch.Size([4, 2562, 3])
-        # mesh_faces : torch.Size([5120, 3])
-        # mesh_face_textures : None
-        # rgb : torch.Size([4, 2562, 3])
-        # vertex_positions,mesh_faces,mesh_face_textures = self.meshtemp.forward_renderer(rec_mesh)
+        pred_tex, mesh_map = self.mesh_deform_model(features_cat)
+        raw_vtx = self.meshtemp.get_vertex_positions(mesh_map)
 
-        repro_imgs,img_probs = self.renderer(rec_mesh,self.faces,None,rgb)
-        new_mesh = Meshes(verts=rec_mesh, faces=self.faces.unsqueeze(0).repeat(rec_mesh.shape[0],1,1))
-        return repro_imgs,rec_mesh,img_probs,self.faces,rgb,new_mesh
+        vertex_positions,mesh_faces,input_uvs,input_texture,mesh_face_textures = self.meshtemp.forward_renderer(raw_vtx, pred_tex)
+        repro_imgs,img_probs = self.renderer(vertex_positions,mesh_faces,input_uvs,input_texture,mesh_face_textures)
+
+        new_mesh = Meshes(verts=raw_vtx, faces=self.meshtemp.mesh.faces.unsqueeze(0).repeat(raw_vtx.shape[0],1,1))
+        return repro_imgs,raw_vtx,img_probs,self.meshtemp.mesh.faces,new_mesh,input_texture

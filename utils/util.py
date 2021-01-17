@@ -191,8 +191,8 @@ def calc_eer(distances, label):
 
 
 # 保存为trimesh
-def save_mesh(v,f,rgb,name = 'stuff.stl'):
-    mesh = trimesh.Trimesh(vertices = v, faces = f,vertex_colors=rgb)
+def save_mesh(v,f,name = 'stuff.stl'):
+    mesh = trimesh.Trimesh(vertices = v, faces = f)
     mesh.export(name)
 
 

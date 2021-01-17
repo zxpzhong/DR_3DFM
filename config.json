@@ -1,5 +1,5 @@
 {
-    "name": "test",
+    "name": "pytorch3duvmap",
     "n_gpu": "2",
 
     "arch": {

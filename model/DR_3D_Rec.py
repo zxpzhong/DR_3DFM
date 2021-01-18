@@ -355,6 +355,7 @@ class DR_3D_Model(nn.Module):
         raw_vtx = self.meshtemp.get_vertex_positions(mesh_map)
 
         vertex_positions,mesh_faces,input_uvs,input_texture,mesh_face_textures = self.meshtemp.forward_renderer(raw_vtx, pred_tex)
+        
         repro_imgs,img_probs = self.renderer(vertex_positions,mesh_faces,input_uvs,input_texture,mesh_face_textures)
 
         new_mesh = Meshes(verts=raw_vtx, faces=self.meshtemp.mesh.faces.unsqueeze(0).repeat(raw_vtx.shape[0],1,1))

@@ -21,17 +21,12 @@ def img_open(path):
     img = Image.fromarray(array, mode='RGB')
     return img
 
-
 class LFMB_3DFB_Pictures_Seged_Rectified(BaseDataLoader):
-    def __init__(self, data_dir,test_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1, training=True, verification=True):
+    def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1):
         self.data_dir = data_dir
-        self.test_dir = test_dir
-        self.dataset = Train_Dataset(self.data_dir)
-        if not self.test_dir == None:
-            self.test_dataset = Test_Dataset(self.test_dir)
-        else:
-            self.test_dataset = None
-        super().__init__(self.dataset,self.test_dataset, batch_size, shuffle, validation_split, num_workers,verification)
+        self.dataset = Train_Dataset('/home/data/finger_vein/LFMB-3DFB_Pictures_Seged_Rectified_640_400/',self.data_dir)
+        super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
+
 
 transform = T.Compose([
     # T.Resize([256, 256]),
@@ -57,9 +52,8 @@ transform_notrans = T.Compose([
 ])
 
 class Train_Dataset(torch.utils.data.Dataset):
-    def __init__(self,root = '/home/data/finger_vein/LFMB-3DFB_Pictures_Seged_Rectified_640_400/'):
+    def __init__(self,root,train_file):
         self.root = root
-        train_file = 'data/train_file_forever.csv'
         handle = open(train_file)
         lines = handle.readlines()
         self.prefixs = list(set([item.split(',')[2] for item in lines[1:]]))
@@ -93,7 +87,7 @@ class Train_Dataset(torch.utils.data.Dataset):
         # img6 = torch.cat([img6, img6, img6], 0)
 
         # pil_img = torch.cat([pil_img, pil_img, pil_img], 0)
-        label = int(0)
+        # label = int(index)
         img = [img1,img2,img3,img4,img5,img6]
         mask1 = torch.where(torch.sum(img1,dim=0) > 0,torch.ones_like(torch.sum(img1,dim=0)) ,torch.zeros_like(torch.sum(img1,dim=0))).unsqueeze(-1)
         mask2 = torch.where(torch.sum(img2,dim=0) > 0,torch.ones_like(torch.sum(img2,dim=0)) ,torch.zeros_like(torch.sum(img2,dim=0))).unsqueeze(-1)
@@ -105,45 +99,4 @@ class Train_Dataset(torch.utils.data.Dataset):
         for i in range(len(img)):
             img[i] = torch.cat([img[i],mask[i].permute(2,0,1)],dim=0)
         # print(path)
-        return img,label,mask
-
-class Test_Dataset(torch.utils.data.Dataset):
-    def __init__(self,root = '/home/data/finger_vein/LFMB-3DFB_Pictures_Seged_Rectified_640_400/'):
-        self.root = root
-        train_file = 'data/test_file_forever.csv'
-        handle = open(train_file)
-        lines = handle.readlines()
-        self.prefixs = list(set([item.split(',')[2] for item in lines[1:]]))
-        self.prefixs.sort()
-        pass
-
-    def __len__(self):
-        return len(self.prefixs)
-        # return 1
-
-    def __getitem__(self, index):
-        path = self.root + self.prefixs[index]
-        img1 = img_open(path+"_A.bmp")
-        img1 = transform_notrans(img1)
-        # img1 = torch.cat([img1, img1, img1], 0)
-        img2 = img_open(path+"_B.bmp")
-        img2 = transform_notrans(img2)
-        # img2 = torch.cat([img2, img2, img2], 0)
-        img3 = img_open(path+"_C.bmp")
-        img3 = transform_notrans(img3)
-        # img3 = torch.cat([img3, img3, img3], 0)
-        img4 = img_open(path+"_D.bmp")
-        img4 = transform_notrans(img4)
-        # img4 = torch.cat([img4, img4, img4], 0)
-        img5 = img_open(path+"_E.bmp")
-        img5 = transform_notrans(img5)
-        # img5 = torch.cat([img5, img5, img5], 0)
-        img6 = img_open(path+"_F.bmp")
-        img6 = transform_notrans(img6)
-        # img6 = torch.cat([img6, img6, img6], 0)
-
-        # pil_img = torch.cat([pil_img, pil_img, pil_img], 0)
-        label = int(0)
-        img = [img1,img2,img3,img4,img5,img6]
-        print(path)
-        return img,label,path
+        return img,self.prefixs[index],mask

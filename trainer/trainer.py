@@ -21,9 +21,8 @@ class Trainer(BaseTrainer):
     Trainer class
     """
     def __init__(self, model, criterion, metric_ftns, optimizer, config, data_loader,
-                 valid_data_loader=None,veri_mode = False, lr_scheduler=None, len_epoch=None):
+                 valid_data_loader=None,test_data_loader = None, lr_scheduler=None, len_epoch=None):
         super().__init__(model, criterion, metric_ftns, optimizer, config)
-        self.veri_mode = veri_mode
         self.config = config
         self.data_loader = data_loader
         if len_epoch is None:
@@ -34,6 +33,7 @@ class Trainer(BaseTrainer):
             self.data_loader = inf_loop(data_loader)
             self.len_epoch = len_epoch
         self.valid_data_loader = valid_data_loader
+        self.test_data_loader = test_data_loader
         self.do_validation = self.valid_data_loader is not None
         self.lr_scheduler = lr_scheduler
         self.log_step = 50*int(np.sqrt(data_loader.batch_size))
@@ -52,7 +52,7 @@ class Trainer(BaseTrainer):
         self.train_metrics.reset()
         
         for batch_idx, (data, target, mask) in enumerate(tqdm(self.data_loader)):
-            data, target = [item.to(self.device) for item in data], target.to(self.device)
+            data = [item.to(self.device) for item in data]
             mask = [item.to(self.device) for item in mask]
             self.optimizer.zero_grad()
             output,rec_mesh,img_probs,faces,new_mesh,input_texture = self.model(data)

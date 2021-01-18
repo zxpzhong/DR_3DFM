@@ -50,7 +50,7 @@ PIL读取出来的图像默认就已经是0-1范围了！！！！！！！！�
 '''
 transform_notrans = T.Compose([
     # T.Grayscale(),
-    # T.Resize([224,224]), # 缩放图片(Image)
+    T.Resize([256,256]), # 缩放图片(Image)
     T.ToTensor(), # 将图片(Image)转成Tensor，归一化至[0, 1]
     # T.Normalize(mean=[.5, .5, .5], std=[.5, .5, .5]) # 标准化至[-1, 1]，规定均值和标准差
     # T.Normalize([0.5], [0.5]),  # 标准化至[-1, 1]，规定均值和标准差

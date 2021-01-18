@@ -193,7 +193,8 @@ class Renderer(nn.Module):
         self.point_num = point_num
         
         # DIB渲染器
-        self.renderer = DIBRenderer(height=640, width=400, mode='Lambertian',camera_fov_y=66.96 * np.pi / 180.0)
+        # self.renderer = DIBRenderer(height=640, width=400, mode='Lambertian',camera_fov_y=66.96 * np.pi / 180.0)
+        self.renderer = DIBRenderer(height=256, width=256, mode='Lambertian',camera_fov_y=66.96 * np.pi / 180.0)
         self.renderer.set_look_at_parameters([0],[0],[0],fovx=57.77316 * np.pi / 180.0, fovy=44.95887 * np.pi / 180.0, near=0.01, far=10.0)
         # 设置相机参数
         # self.renderer.set_camera_parameters()
@@ -304,13 +305,18 @@ class DR_3D_Model(nn.Module):
         self.img_embedding_model = Img_Embedding_Model()
         
         # 三维形变网络
-        # self.mesh_deform_model = ReconstructionNetwork(symmetric=False,
-        #                           texture_res=256,
-        #                           mesh_res=32,
-        #                           interpolation_mode = 'bilinear',
-        #                          )
-        self.displace_net = UNet(24,3)
-        self.uvmap_net = UNet(24,3)
+        self.displace_net = ReconstructionNetwork(symmetric=False,
+                                  texture_res=256,
+                                  mesh_res=32,
+                                  interpolation_mode = 'bilinear',
+                                 )
+        self.uvmap_net = ReconstructionNetwork(symmetric=False,
+                                  texture_res=256,
+                                  mesh_res=32,
+                                  interpolation_mode = 'bilinear',
+                                 )
+        # self.displace_net = UNet(24,3)
+        # self.uvmap_net = UNet(24,1)
         
         # 可微渲染器
         self.renderer = Renderer(N=self.N,f_dim=self.f_dim,point_num = self.point_num)
@@ -324,14 +330,27 @@ class DR_3D_Model(nn.Module):
         输入: N张图片 N list C*H*W
         输出: 对应N个视角的图片 : N list C*H*W
         '''
-
+        # 为每张图像提取特征
+        # embeddings = []
+        # for i in range(len(images)):
+        #     embeddings.append(self.img_embedding_model(images[i]))
+        # features_cat = torch.zeros([embeddings[0].shape[0],self.f_dim*self.N]).cuda()
+        # for i in range(len(embeddings)):
+        #     x = self.GAP(embeddings[i])
+        #     x = x.view(x.size(0), -1)
+        #     features_cat[:,i*self.f_dim:(i+1)*self.f_dim] = x
+        
         # 图像通道混合后直接unet
         features_cat = images[0]
         for i in range(len(images)-1):
             features_cat = torch.cat((features_cat,images[i+1]),dim=1)
-        # unet生成位移图和uvmap
-        pred_tex = self.displace_net(features_cat)
-        mesh_map = self.uvmap_net(features_cat)
+        # 特征提取
+        # features_cat = self.img_embedding_model(features_cat)
+        # features_cat = self.GAP(features_cat)
+        # features_cat = features_cat.view(features_cat.size(0), -1)
+        # 将特征输入解码器,得到displacement map和uv map
+        pred_tex,_ = self.displace_net(features_cat)
+        _,mesh_map = self.uvmap_net(features_cat)
         
         raw_vtx = self.meshtemp.get_vertex_positions(mesh_map)
 

@@ -69,11 +69,29 @@ class ReconstructionNetwork(nn.Module):
         assert mesh_res >= 32
         assert texture_res >= 64
         
+        self.conv1e = nn.Conv2d(24, 64, 5, stride=2, padding=2, bias=False) # 128 -> 64
+        self.bn1e = nn.BatchNorm2d(64)
+        self.conv2e = nn.Conv2d(64, 128, 3, stride=2, padding=1, bias=False) # 64 > 32
+        self.bn2e = nn.BatchNorm2d(128)
+        self.conv3e = nn.Conv2d(128, 256, 3, stride=2, padding=1, bias=False) # 32 -> 16
+        self.bn3e = nn.BatchNorm2d(256)
+        self.conv4e = nn.Conv2d(256, 512, 3, stride=2, padding=1, bias=False) # 16 -> 8
+        self.bn4e = nn.BatchNorm2d(512)
+        
+        bottleneck_dim = 256
+        self.conv5e = nn.Conv2d(512, 64, 3, stride=2, padding=1, bias=False) # 8 -> 4
+        self.bn5e = nn.BatchNorm2d(64)
+        self.fc1e = nn.Linear(64*8*8, bottleneck_dim, bias=False)
+        self.bnfc1e = nn.BatchNorm1d(bottleneck_dim)
+            
+        self.fc3e = nn.Linear(bottleneck_dim, 1024, bias=False)
+        self.bnfc3e = nn.BatchNorm1d(1024)
+        
         # Texture generation
         self.base_res_h = 4
         self.base_res_w = 2 if symmetric else 4
             
-        self.fc1_tex = nn.Linear(512, self.base_res_h*self.base_res_w*256)
+        self.fc1_tex = nn.Linear(1024, self.base_res_h*self.base_res_w*256)
         self.blk1 = ResBlock(256, 512, self.pad) # 4 -> 8
         self.blk2 = ResBlock(512, 256, self.pad) # 8 -> 16
         self.blk3 = ResBlock(256, 256, self.pad) # 16 -> 32 (k=1)
@@ -103,18 +121,18 @@ class ReconstructionNetwork(nn.Module):
             total_params += param.nelement()
         print('Model parameters: {:.2f}M'.format(total_params/1000000))
         
-    def forward(self, z):
+    def forward(self, x):
         # Generate latent code
-        # x = self.relu(self.bn1e(self.conv1e(x)))
-        # x = self.relu(self.bn2e(self.conv2e(x)))
-        # x = self.relu(self.bn3e(self.conv3e(x)))
-        # x = self.relu(self.bn4e(self.conv4e(x)))
-        # x = self.relu(self.bn5e(self.conv5e(x)))
+        x = self.relu(self.bn1e(self.conv1e(x)))
+        x = self.relu(self.bn2e(self.conv2e(x)))
+        x = self.relu(self.bn3e(self.conv3e(x)))
+        x = self.relu(self.bn4e(self.conv4e(x)))
+        x = self.relu(self.bn5e(self.conv5e(x)))
         
-        # x = x.view(x.shape[0], -1) # Flatten
-        # z = self.relu(self.bnfc1e(self.fc1e(x)))
-        # # 隐编码
-        # z = self.relu(self.bnfc3e(self.fc3e(z)))
+        x = x.view(x.shape[0], -1) # Flatten
+        z = self.relu(self.bnfc1e(self.fc1e(x)))
+        # 隐编码
+        z = self.relu(self.bnfc3e(self.fc3e(z)))
         
         bb = self.fc1_tex(z).view(z.shape[0], -1, self.base_res_h, self.base_res_w)
         bb = self.up(self.blk1(bb))

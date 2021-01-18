@@ -5,6 +5,7 @@ from .unet_parts import *
 def debug(str):
     if False:
         print(str)
+
 class UNet(nn.Module):
     def __init__(self, n_channels, n_classes):
         super(UNet, self).__init__()
@@ -20,7 +21,7 @@ class UNet(nn.Module):
         self.up2 = up(256, 64,bilinear = False)
         self.up3 = up(128, 32,bilinear = False)
         self.up4 = up(64, 16,bilinear = False)
-        self.outc = outconv(16, n_classes)
+        self.outc1 = outconv(16, n_classes)
     def forward(self, x):
         x1 = self.inc(x)
         debug('x1 shape is {}'.format(x1.shape))
@@ -40,5 +41,5 @@ class UNet(nn.Module):
         x = self.up2(x, x3)
         x = self.up3(x, x2)
         x = self.up4(x, x1)
-        x = self.outc(x)
+        x = self.outc1(x)
         return x

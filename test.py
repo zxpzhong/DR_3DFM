@@ -33,14 +33,14 @@ def main(config):
     model = model.to(device)
     model.eval()
     
-    with torch.no_grad():
-        for batch_idx, (data, target, mask) in enumerate(tqdm(train_data_loader)):
-            data = [item.to(device) for item in data]
-            mask = [item.to(device) for item in mask]
-            output,rec_mesh,img_probs,faces,new_mesh,input_texture = model(data)
-            # save 3d model
-            for i in range(data[0].shape[0]):
-                model.meshtemp.export_obj(os.path.join(config.obj_dir,'{}.obj'.format(target[i])),rec_mesh[i],input_texture[i])
+    # with torch.no_grad():
+    #     for batch_idx, (data, target, mask) in enumerate(tqdm(train_data_loader)):
+    #         data = [item.to(device) for item in data]
+    #         mask = [item.to(device) for item in mask]
+    #         output,rec_mesh,img_probs,faces,new_mesh,input_texture = model(data)
+    #         # save 3d model
+    #         for i in range(data[0].shape[0]):
+    #             model.meshtemp.export_obj(os.path.join(config.obj_dir,'{}.obj'.format(target[i])),rec_mesh[i],input_texture[i])
     with torch.no_grad():
         for batch_idx, (data, target, mask) in enumerate(tqdm(valid_data_loader)):
             data = [item.to(device) for item in data]

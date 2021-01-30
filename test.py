@@ -33,14 +33,14 @@ def main(config):
     model = model.to(device)
     model.eval()
     
-    # with torch.no_grad():
-    #     for batch_idx, (data, target, mask) in enumerate(tqdm(train_data_loader)):
-    #         data = [item.to(device) for item in data]
-    #         mask = [item.to(device) for item in mask]
-    #         output,rec_mesh,img_probs,faces,new_mesh,input_texture = model(data)
-    #         # save 3d model
-    #         for i in range(data[0].shape[0]):
-    #             model.meshtemp.export_obj(os.path.join(config.obj_dir,'{}.obj'.format(target[i])),rec_mesh[i],input_texture[i])
+    with torch.no_grad():
+        for batch_idx, (data, target, mask) in enumerate(tqdm(train_data_loader)):
+            data = [item.to(device) for item in data]
+            mask = [item.to(device) for item in mask]
+            output,rec_mesh,img_probs,faces,new_mesh,input_texture = model(data)
+            # save 3d model
+            for i in range(data[0].shape[0]):
+                model.meshtemp.export_obj(os.path.join(config.obj_dir,'{}.obj'.format(target[i])),rec_mesh[i],input_texture[i])
     with torch.no_grad():
         for batch_idx, (data, target, mask) in enumerate(tqdm(valid_data_loader)):
             data = [item.to(device) for item in data]
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     args = argparse.ArgumentParser(description='PyTorch Template')
     args.add_argument('-c', '--config', default='config.json', type=str,
                       help='config file path (default: None)')
-    args.add_argument('-r', '--resume', default="/home/zf/vscode/3d/DR_3DFM/saved/models/pytorch3duvmap/0118_005712_pytorch3d_imgL1maskL1lapedgeflat_uv/checkpoint-epoch85.pth", type=str,
+    args.add_argument('-r', '--resume', default="/home/zf/vscode/3d/DR_3DFM/saved/models/6vein/0130_184722_6vein/checkpoint-epoch5.pth", type=str,
                       help='path to latest checkpoint (default: None)')
     args.add_argument('-d', '--device', default=None, type=str,
                       help='indices of GPUs to enable (default: all)')

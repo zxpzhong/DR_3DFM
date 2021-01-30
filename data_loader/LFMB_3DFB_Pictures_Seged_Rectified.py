@@ -26,13 +26,13 @@ def img_open(path):
 class LFMB_3DFB_Pictures_Seged_Rectified_Train(BaseDataLoader):
     def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1):
         self.data_dir = data_dir
-        self.dataset = Train_Dataset('/home/data/finger_vein/LFMB-3DFB_Pictures_Seged_Rectified_640_400/',self.data_dir)
+        self.dataset = Train_Dataset('/home/data/finger_vein/SCUT_LFMB/SCUT_LFMB_3DFB/LFMB_3DFB_160_256/',self.data_dir)
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
 
 class LFMB_3DFB_Pictures_Seged_Rectified_Test(BaseDataLoader):
     def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1):
         self.data_dir = data_dir
-        self.dataset = Test_Dataset('/home/data/finger_vein/LFMB-3DFB_Pictures_Seged_Rectified_640_400/',self.data_dir)
+        self.dataset = Test_Dataset('/home/data/finger_vein/SCUT_LFMB/SCUT_LFMB_3DFB/LFMB_3DFB_160_256/',self.data_dir)
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
 
 transform = T.Compose([
@@ -74,22 +74,22 @@ class Train_Dataset(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         path = self.root+self.prefixs[index]
-        img1 = img_open(path+"_A.bmp")
+        img1 = img_open(path+"_AA.bmp")
         img1 = transform_notrans(img1)
         # img1 = torch.cat([img1, img1, img1], 0)
-        img2 = img_open(path+"_B.bmp")
+        img2 = img_open(path+"_BB.bmp")
         img2 = transform_notrans(img2)
         # img2 = torch.cat([img2, img2, img2], 0)
-        img3 = img_open(path+"_C.bmp")
+        img3 = img_open(path+"_CC.bmp")
         img3 = transform_notrans(img3)
         # img3 = torch.cat([img3, img3, img3], 0)
-        img4 = img_open(path+"_D.bmp")
+        img4 = img_open(path+"_DD.bmp")
         img4 = transform_notrans(img4)
         # img4 = torch.cat([img4, img4, img4], 0)
-        img5 = img_open(path+"_E.bmp")
+        img5 = img_open(path+"_EE.bmp")
         img5 = transform_notrans(img5)
         # img5 = torch.cat([img5, img5, img5], 0)
-        img6 = img_open(path+"_F.bmp")
+        img6 = img_open(path+"_FF.bmp")
         img6 = transform_notrans(img6)
         # img6 = torch.cat([img6, img6, img6], 0)
 
@@ -125,22 +125,22 @@ class Test_Dataset(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         path = self.root+self.prefixs[index]
-        img1 = img_open(path+"_A.bmp")
+        img1 = img_open(path+"_AA.bmp")
         img1 = transform_notrans(img1)
         # img1 = torch.cat([img1, img1, img1], 0)
-        img2 = img_open(path+"_B.bmp")
+        img2 = img_open(path+"_BB.bmp")
         img2 = transform_notrans(img2)
         # img2 = torch.cat([img2, img2, img2], 0)
-        img3 = img_open(path+"_C.bmp")
+        img3 = img_open(path+"_CC.bmp")
         img3 = transform_notrans(img3)
         # img3 = torch.cat([img3, img3, img3], 0)
-        img4 = img_open(path+"_D.bmp")
+        img4 = img_open(path+"_DD.bmp")
         img4 = transform_notrans(img4)
         # img4 = torch.cat([img4, img4, img4], 0)
-        img5 = img_open(path+"_E.bmp")
+        img5 = img_open(path+"_EE.bmp")
         img5 = transform_notrans(img5)
         # img5 = torch.cat([img5, img5, img5], 0)
-        img6 = img_open(path+"_F.bmp")
+        img6 = img_open(path+"_FF.bmp")
         img6 = transform_notrans(img6)
         # img6 = torch.cat([img6, img6, img6], 0)
 

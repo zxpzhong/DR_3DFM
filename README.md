@@ -10,7 +10,11 @@
 - torchvision>=0.4.0
 - tqdm
 - kaolin=0.1
-注意：kaolin0.1源码有bug，需要修改源码再编译安装，修改处为：
+注意：kaolin0.1源码有bug，需要修改源码再编译安装kaolin0.1，修改处为：
+将修改后的base.py， example.py， perspective.py覆盖掉原来的
+examples/renderers/DIB-R
+kaolin/graphics/dib_renderer/renderer
+kaolin/graphics/dib_renderer/utils
 
 # 使用方法
 

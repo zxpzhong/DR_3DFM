@@ -9,6 +9,8 @@
 - [Protobuf](https://gist.github.com/diegopacheco/cd795d36e6ebcd2537cd18174865887b)
 - torchvision>=0.4.0
 - tqdm
+- kaolin=0.1
+注意：kaolin0.1源码有bug，需要修改源码再编译安装，修改处为：
 
 # 使用方法
 
